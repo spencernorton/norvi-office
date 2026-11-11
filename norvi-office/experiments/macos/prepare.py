@@ -42,6 +42,14 @@ def config(appearance):
                 prop.find("value").text = "notebookbar.ui"
             if name == "ApplicationAppearance":
                 prop.find("value").text = "2" if appearance == "dark" else "1"
+    # ActiveCalc/Writer select the notebookbar implementation, but do not turn
+    # notebookbar mode on. Mirror View > User Interface's per-application state.
+    for module in ("Calc", "Writer", "Impress", "Draw"):
+        path = ("/org.openoffice.Office.UI.ToolbarMode/Applications/"
+                f"org.openoffice.Office.UI.ToolbarMode:Application['{module}']")
+        item = ET.SubElement(tree.getroot(), "item", {f"{{{REGISTRY}}}path": path})
+        prop = ET.SubElement(item, "prop", {f"{{{REGISTRY}}}name": "Active", f"{{{REGISTRY}}}op": "fuse"})
+        ET.SubElement(prop, "value").text = "notebookbar.ui"
     ET.register_namespace("oor", REGISTRY)
     return ET.tostring(tree.getroot(), encoding="utf-8", xml_declaration=True)
 
@@ -139,6 +147,7 @@ def prepare(bundle, output, appearance="dark"):
         receipt = {"kind": "native macOS Aqua design trial; not a Linux glass release", "state": "prepared; preset installation and visible acceptance pending",
                    "application": str(bundle), "application_version": info.get("CFBundleShortVersionString"),
                    "source_calc_sha256": sha256(original).hexdigest(), "appearance": appearance,
+                   "toolbar_mode": "notebookbar.ui", "toolbar_mode_modules": ["Calc", "Writer", "Impress", "Draw"],
                    "theme_sha256": sha256(icons.read_bytes()).hexdigest(), "profile": str(output / "profile"),
                    "profile_uri": (output / "profile").as_uri(),
                    "package": str(output / package.name), "apps": list(APPS),

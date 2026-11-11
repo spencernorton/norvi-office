@@ -1,5 +1,17 @@
 # Journal
 
+## 2026-11-11 — Select notebookbar mode in fresh Mac profiles
+
+- Real Mac review initially opened standard toolbars despite the preset's
+  notebookbar implementation fields. The native UI dialog additionally persists
+  each Applications/<module>/Active mode; its schema defaults those to Default.
+- Add those per-application selections for Calc, Writer, Impress and Draw,
+  matching the actual dialog's persisted values. Regressions inspect both dark
+  and light packages for all four mode records.
+- This is a source correction for future fresh trials. The running review profile
+  was inspected read-only and left unchanged; fresh-launch acceptance remains
+  distinct from the source/package assertions.
+
 ## 2026-11-11 — Prepare native Mac design trials
 
 - Added a pure preparation helper for a matching official Mac bundle, an isolated

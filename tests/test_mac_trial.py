@@ -4,6 +4,7 @@ import plistlib
 import tempfile
 import unittest
 from unittest.mock import patch
+import xml.etree.ElementTree as ET
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -77,6 +78,15 @@ class MacTrialTests(unittest.TestCase):
                     self.assertIn(b"/org.openoffice.Office.UI.ToolbarMode", config)
                     self.assertIn(b"notebookbar.ui", config)
                     self.assertNotIn(b"Cell Styles", config)
+                    settings = ET.fromstring(config)
+                    for module in ("Calc", "Writer", "Impress", "Draw"):
+                        path = ("/org.openoffice.Office.UI.ToolbarMode/Applications/"
+                                f"org.openoffice.Office.UI.ToolbarMode:Application['{module}']")
+                        matches = [item for item in settings if item.get(f"{{{MAC.REGISTRY}}}path") == path]
+                        self.assertEqual(len(matches), 1, module)
+                        prop = matches[0].find("prop")
+                        self.assertEqual(prop.get(f"{{{MAC.REGISTRY}}}name"), "Active")
+                        self.assertEqual(prop.findtext("value"), "notebookbar.ui")
                     variant = "sifr_dark_svg" if appearance == "dark" else "sifr_svg"
                     from io import BytesIO
                     with ZipFile(BytesIO(package.read(f"iconsets/images_{variant}.zip"))) as icons:
