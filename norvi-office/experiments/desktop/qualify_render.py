@@ -16,21 +16,33 @@ HERE = Path(__file__).resolve().parent
 
 
 def notebook_tabs(frame, api):
-    """Find the named notebook tabs without walking the document's cells/text."""
-    found = []
+    """Select the notebookbar group, excluding independently selected sheet tabs."""
+    groups = []
     excluded = (api.Role.DOCUMENT_TEXT, api.Role.TABLE)
+
+    def group_tabs(node, depth=0):
+        if node is None or depth > 6 or node.get_role() in (*excluded, api.Role.PAGE_TAB_LIST):
+            return []
+        if node.get_role() == api.Role.PAGE_TAB:
+            return [node]
+        return [tab for index in range(min(node.get_child_count(), 128))
+                for tab in group_tabs(node.get_child_at_index(index), depth + 1)]
 
     def visit(node, depth=0):
         if node is None or depth > 12 or node.get_role() in excluded:
             return
-        if node.get_role() == api.Role.PAGE_TAB:
-            found.append(node)
-            return
+        if node.get_role() == api.Role.PAGE_TAB_LIST:
+            tabs = [tab for index in range(min(node.get_child_count(), 128))
+                    for tab in group_tabs(node.get_child_at_index(index))]
+            if {"Home", "Insert", "Layout"}.issubset({tab.get_name() for tab in tabs}):
+                groups.append(tabs)
         for index in range(min(node.get_child_count(), 128)):
             visit(node.get_child_at_index(index), depth + 1)
 
     visit(frame)
-    return found
+    if len(groups) != 1:
+        raise AssertionError("Expected one notebookbar tab group containing Home, Insert and Layout")
+    return groups[0]
 
 
 def selected_tab(frame, api):

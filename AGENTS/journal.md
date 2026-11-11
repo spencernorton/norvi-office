@@ -1,5 +1,13 @@
 # Journal
 
+## 2026-11-11 — Scope render checks to notebookbar tabs
+
+- A separate selected tab group, such as Calc's sheet tabs, must not be confused
+  with the ribbon. Locate the unique group containing the named ribbon tabs
+  and reject ambiguous groups before exercising transitions.
+- Added a regression with independently selected ribbon and sheet groups. The
+  native accessibility structure still requires qualification after maintenance.
+
 ## 2026-11-11 — Preserve interactive document recovery
 
 - Removed the disposable-preview no-recovery flag from actual application
