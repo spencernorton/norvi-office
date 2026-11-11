@@ -77,3 +77,19 @@ After the desktop maintenance hold is cleared:
 
 The current source work does not install or activate a new host build, publish an
 APT candidate, or qualify a stable full-glass release.
+
+## Native Mac design trial
+
+The separate Mac preparation path reuses the matching official Calc ribbon
+input and shared icon artwork in a fresh profile, with native Aqua controls and
+normal document recovery. Its source and generated launchers do not modify the
+official application. GNOME compositor glass is unavailable on macOS.
+
+Manual evaluation has opened Calc, Writer and Impress as actual Mac windows.
+The grouped Calc Home and Formulas controls, shared command artwork, editable
+fictional documents and native Calc/Writer Undo/Redo were exercised. The trial
+uses its own profile; the normal profile and signed official application are
+preserved. These observations cover the manually selected Tabbed mode in the
+running trial. The newer preset's automatic first-use mode selection still
+needs a fresh profile GUI check. They do not qualify other modules, full design
+parity, Linux glass or a signed archive release.

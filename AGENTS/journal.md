@@ -1,5 +1,23 @@
 # Journal
 
+## 2026-11-11 — Record native Mac evaluation and publish the combined trial source
+
+- The Mac UI owner opened actual native Calc, Writer and Impress windows using
+  the isolated design-trial profile. Calc's grouped Home and Formulas controls,
+  shared command artwork, native editing and Calc/Writer Undo/Redo were exercised.
+  Fictional spreadsheet formulas, editable prose and a presentation were saved.
+- The official arm64 application remains signed and unmodified, and the normal
+  profile hash is unchanged. No embedded-Python launch constraint was weakened;
+  trial configuration used the application's own native menus.
+- Those running windows were set to Tabbed mode through the native dialog.
+  The new preset's automatic first-use mode selections still require a fresh
+  profile GUI check; source assertions do not establish that acceptance.
+- Combined local checks pass: twenty-three Python regressions, three Linux-only
+  skips, fourteen JavaScript policy cases, lint, compilation and diff checks.
+  Keep the source PR a draft: macOS glass is unavailable, Linux ribbon buffer
+  association and complete suite parity remain unfinished, and the existing
+  desktop maintenance hold is retained.
+
 ## 2026-11-11 — Select notebookbar mode in fresh Mac profiles
 
 - Real Mac review initially opened standard toolbars despite the preset's
