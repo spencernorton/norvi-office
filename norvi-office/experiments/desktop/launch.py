@@ -11,14 +11,18 @@ import secrets
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from urllib.parse import urlsplit
+import xml.etree.ElementTree as ET
+from zipfile import BadZipFile, ZipFile
 
 HERE = Path(__file__).resolve().parent
 HEADER = HERE.parent / "native-header"
 SHARE = HERE.parents[1]
 sys.path.insert(0, str(HEADER))
 from uno_utils import connect, prop, stop_office  # noqa: E402
+import calc_ribbon  # noqa: E402
 from calc_ribbon import prepare, preview_package, SHORTCUTS  # noqa: E402
 
 APPS = ("writer", "calc", "impress", "draw", "base", "math", "startcenter")
@@ -53,13 +57,141 @@ def command(app, files, profile=None, pipe=None):
     return args
 
 
+def presentation_revision():
+    """Hash inputs, ignoring ZIP timestamps and ordering from package builds."""
+    digest = sha256(b"norvi-desktop-presentation-v1\0")
+
+    def add(name, contents):
+        for value in (name.encode(), contents):
+            digest.update(len(value).to_bytes(8, "big"))
+            digest.update(value)
+
+    add("calc_ribbon.py", (HEADER / "calc_ribbon.py").read_bytes())
+    for name, path in (("preset", SHARE / "extensions/NorviGlass.oxt"),
+                       ("official-icons", calc_ribbon.SYSTEM_ICONS)):
+        with ZipFile(path) as archive:
+            for entry in sorted(archive.namelist()):
+                add(name + "/" + entry, archive.read(entry))
+    return digest.hexdigest()
+
+
+def owned_package(path, expected=None):
+    """Legacy packages have identity, while newly recorded packages have a digest."""
+    if path.is_symlink() or not path.is_file():
+        raise ValueError("Missing or replaced Norvi presentation package; preserved it for recovery")
+    contents = path.read_bytes()
+    actual = sha256(contents).hexdigest()
+    if expected is not None and actual != expected:
+        raise ValueError("The Norvi presentation package was edited; preserved it for recovery")
+    try:
+        with ZipFile(path) as archive:
+            description = ET.fromstring(archive.read("description.xml"))
+            identifier = description.find("{http://openoffice.org/extensions/description/2006}identifier")
+            if identifier is None or identifier.get("value") != "dev.norvi.NorviGlass" or \
+                    "norvi_glass.xcu" not in archive.namelist():
+                raise ValueError("Unknown Norvi presentation package; preserved it for recovery")
+    except (BadZipFile, KeyError, ET.ParseError) as error:
+        raise ValueError("Unknown Norvi presentation package; preserved it for recovery") from error
+    return actual
+
+
+def profile_live(root, profile, proc=Path("/proc")):
+    """Check exact profile arguments, including Office opened outside our wrapper."""
+    try:
+        if running(root, profile):
+            return True
+        processes = list(proc.iterdir())
+    except OSError:
+        # A known record or unavailable process inventory cannot prove closure.
+        return True
+    expected = {("-env:UserInstallation=" + path.as_uri()).encode() for path in (profile, profile.resolve())}
+    for process in processes:
+        if not process.name.isdecimal():
+            continue
+        try:
+            owner = process.stat().st_uid
+        except OSError:
+            continue
+        if owner != os.getuid():
+            continue
+        try:
+            if expected.intersection(process.joinpath("cmdline").read_bytes().split(b"\0")):
+                return True
+        except (FileNotFoundError, ProcessLookupError):
+            continue
+        except OSError:
+            # An owned process whose arguments are unavailable may be our target.
+            return True
+    return False
+
+
+def refresh_presentation(root, profile, env, record):
+    # Never invoke unopkg or a setup/headless Office against a live profile.
+    if profile_live(root, profile):
+        return
+    package = root / "NorviDesktop.oxt"
+    previous = owned_package(package, record.get("presentation_package_sha256"))
+    revision = presentation_revision()
+    if record.get("presentation_revision") == revision:
+        return
+    backup = root / ("NorviDesktop.backup-" + previous + ".oxt")
+    if backup.is_symlink() or (backup.exists() and (not backup.is_file() or sha256(backup.read_bytes()).hexdigest() != previous)):
+        raise ValueError("The presentation backup path was replaced; preserved it for recovery")
+    with tempfile.TemporaryDirectory(prefix=".presentation-refresh-", dir=root) as temporary:
+        staging = Path(temporary)
+        candidate = staging / "NorviDesktop.oxt"
+        preview_package(SHARE / "extensions/NorviGlass.oxt", candidate)
+        current = owned_package(candidate)
+        marker = staging / "profile-ready.json"
+        marker.write_text(json.dumps({**record, "presentation_revision": revision,
+                                     "presentation_package_sha256": current}) + "\n")
+        if profile_live(root, profile):
+            return
+        owned_package(package, previous)
+        if not backup.exists():
+            with backup.open("xb") as saved:
+                saved.write(package.read_bytes())
+            backup.chmod(0o600)
+        arguments = ["unopkg", "add", "--force", "-env:UserInstallation=" + profile.as_uri()]
+        replaced = False
+        try:
+            subprocess.run([*arguments, str(candidate)], env=env, check=True, timeout=60)
+            owned_package(package, previous)
+            candidate.replace(package)
+            replaced = True
+            marker.replace(root / "profile-ready.json")
+        except Exception as error:
+            try:
+                if profile_live(root, profile):
+                    raise RuntimeError("Profile became live; close Office before retrying recovery")
+                subprocess.run([*arguments, str(backup)], env=env, check=True, timeout=60)
+                if replaced:
+                    owned_package(package, current)
+                    restore = staging / "restore.oxt"
+                    restore.write_bytes(backup.read_bytes())
+                    restore.replace(package)
+            except Exception as rollback:
+                raise RuntimeError(f"Presentation refresh failed; backup retained at {backup}. Rollback failed: {rollback}") from error
+            raise RuntimeError("Presentation refresh failed; previous package restored. Retry after resolving the error") from error
+
+
 def initialize(root, env):
     profile = root / "profile-calc"
-    if (root / "profile-ready.json").is_file():
+    ready = root / "profile-ready.json"
+    if ready.is_symlink() or profile.is_symlink():
+        raise ValueError("The Norvi profile or ready record was replaced; preserved it for recovery")
+    if ready.exists():
+        record = json.loads(ready.read_text())
+        if record.get("schema") != 1 or record.get("separate_profile") != str(profile) or not profile.is_dir():
+            raise ValueError("Unknown Norvi profile record; preserved it for recovery")
+        refresh_presentation(root, profile, env, record)
         return profile
     if profile.exists():
         raise ValueError("An unfinished Norvi profile exists; preserved it for recovery")
     package = root / "NorviDesktop.oxt"
+    if package.exists() or package.is_symlink():
+        raise ValueError("An unfinished Norvi presentation package exists; preserved it for recovery")
+    revision = presentation_revision()
     preview_package(SHARE / "extensions/NorviGlass.oxt", package)
     subprocess.run(["unopkg", "add", "-env:UserInstallation=" + profile.as_uri(), str(package)], env=env, check=True)
     prepare(profile, native=True, environment=env)
@@ -86,7 +218,9 @@ def initialize(root, env):
             context.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", context).terminate()
         finally:
             stop_office(office)
-    (root / "profile-ready.json").write_text(json.dumps({"separate_profile": str(profile), "schema": 1}) + "\n")
+    ready.write_text(json.dumps({"separate_profile": str(profile), "schema": 1,
+                                "presentation_revision": revision,
+                                "presentation_package_sha256": owned_package(package)}) + "\n")
     return profile
 
 

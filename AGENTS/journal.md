@@ -1,5 +1,23 @@
 # Journal
 
+## 2026-11-11 — Refresh owned presentation packages in closed profiles
+
+- Existing ready profiles now compare a reproducible revision of the owned
+  artwork generator, base preset and official icon input. ZIP timestamps and
+  entry order do not change that revision. New records also retain the owned
+  package digest, while known legacy records migrate using the extension ID.
+- Closed profiles receive only the updated presentation package through a
+  bounded force install. The original package remains in a hash-named backup;
+  a failed install restores it and leaves the old ready record eligible for
+  retry. Missing, foreign, symlinked or unexpectedly edited packages are
+  preserved with an explicit error. Module layouts, settings and documents
+  are retained without rerunning profile preparation or UNO configuration.
+- Exact owned-process profile arguments and verified running records defer
+  updates while Office is live. Unreadable owned-process arguments also defer
+  conservatively. Thirty-three Python tests pass with three Linux-only skips;
+  focused lint, compilation and diff checks pass. Installed upgrade acceptance
+  remains separate from these source and package-fixture checks.
+
 ## 2026-11-11 — Keep cached compositor code out of opaque enrollment
 
 - The candidate's native header and ribbon do not require compositor effects.

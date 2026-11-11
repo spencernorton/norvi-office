@@ -53,6 +53,9 @@ real document paths/URLs from the normal suite shortcuts and file associations.
 A separate persistent Norvi profile retains its settings across launches;
 the original LibreOffice profile is preserved. The shared native command broker
 routes each header to its own frame when several documents or modules are open.
+When that profile is closed, a presentation update replaces only its owned
+extension package, retaining a backup and its existing layouts, settings and
+documents. Open applications defer that update until they close normally.
 The integration creates normal desktop and application-menu entries for Writer,
 Calc, Impress, Draw, Base, Math and the Office start center. When replacing a
 managed design preview, it retires only unchanged preview shortcuts. Open
