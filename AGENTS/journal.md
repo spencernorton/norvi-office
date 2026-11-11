@@ -1,5 +1,20 @@
 # Journal
 
+## 2026-11-11 — Disable client glass after cached-paint review
+
+- The GTK draw signal copies a cached VCL surface. Full GTK invalidation alone
+  does not bind post-draw ATK geometry to that image, so the attempted client
+  composition still lacks the required paint/layout association.
+- Added a regression reproducing the second blocker: rejecting a reused glass
+  buffer after a shrinking boundary leaves its old alpha intact. Rejection is
+  not an opaque cleanup mechanism. The adapter is now disabled in source, and
+  no environment flag can enable native ribbon alpha. Native Shell mode still
+  never attaches a geometry-driven opacity shader.
+- Retain pure Cairo diagnostics as research, with these limits stated. Remove
+  the unnecessary libm dependency in the coordinate check and require exact
+  dimensions when acknowledging backdrop readiness. No native glass runtime
+  acceptance or completed UI-overhaul claim follows from these source tests.
+
 ## 2026-11-11 — Add an opt-in client-buffer glass candidate
 
 - Native Shell mode no longer attaches the geometry-driven alpha shader.

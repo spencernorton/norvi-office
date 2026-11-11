@@ -59,8 +59,9 @@ static GSettings *popup_settings, *interface_settings, *contrast_settings;
 static const char *token;
 static const char *broker_name;
 static gboolean native_desktop;
-/* Experimental until the exact client/desktop pair passes native rendering
- * qualification. Ordinary installed launches retain the opaque GTK path. */
+/* Kept disabled: GTK copies a cached VCL image, so draw-time ATK geometry is
+ * not yet associated with those pixels. No environment flag may enable this
+ * unqualified adapter. The pure pixel primitive remains separately testable. */
 static gboolean client_glass;
 
 static Header *header_ref(Header *header) {
@@ -759,7 +760,7 @@ G_MODULE_EXPORT void gtk_module_init(gint *argc, gchar ***argv) {
     if (!isolated && !desktop)
         return;
     native_desktop = desktop && !isolated;
-    client_glass = native_desktop && g_strcmp0(g_getenv("NORVI_OFFICE_CLIENT_GLASS"), "1") == 0;
+    client_glass = FALSE;
     broker_name = g_getenv("NORVI_OFFICE_HEADER_BUS");
     if (!broker_name)
         broker_name = "dev.norvi.OfficeHeader";

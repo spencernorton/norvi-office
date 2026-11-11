@@ -195,7 +195,8 @@ export default class NorviOffice extends Extension {
             this.scan();
             this.syncAll();
             const backdrop = [...this.entries.values()].some(entry => entry.window.get_pid() === pid &&
-                entry.window.get_title() === title && entry.clientAlpha && entry.blur.visible);
+                entry.window.get_title() === title && entry.window.get_buffer_rect().width === width &&
+                entry.window.get_buffer_rect().height === height && entry.clientAlpha && entry.blur.visible);
             invocation.return_value(new GLib.Variant('(b)', [clientAlpha ? backdrop : true]));
         } catch (_error) {
             invocation.return_value(new GLib.Variant('(b)', [false]));

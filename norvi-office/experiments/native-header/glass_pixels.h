@@ -23,7 +23,7 @@ static const char *glass_reason(GlassResult result) {
 }
 
 static int glass_integer(double value) {
-    return isfinite(value) && value >= -32768 && value <= 32768 && value == floor(value);
+    return isfinite(value) && value >= -32768 && value <= 32768 && value == (int)value;
 }
 
 static unsigned glass_luminance(uint32_t pixel) {
@@ -31,9 +31,10 @@ static unsigned glass_luminance(uint32_t pixel) {
         19 * (pixel & 255) + 128) >> 8;
 }
 
-/* Reject before the first write. The complete current frame must be opaque,
- * freshly painted and in the dirty clip; a partially reused glass buffer must
- * never be multiplied again. Document pixels are read-only throughout. */
+/* Reject before the first write. The caller must separately establish a fresh
+ * complete frame and matching geometry. Alpha/clip checks alone do not prove
+ * that association or restore an already-composed source on rejection.
+ * Document pixels are read-only throughout a successful call. */
 static GlassResult glass_compose(cairo_t *context, int width, int height, int edge,
         GlassPaint *paint) {
     *paint = (GlassPaint){0};

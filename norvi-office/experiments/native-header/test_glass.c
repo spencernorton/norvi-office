@@ -124,11 +124,26 @@ static void transformed_surface_and_disjoint_clip(void) {
     cairo_destroy(context);
 }
 
+static void rejection_does_not_restore_a_reused_buffer(void) {
+    cairo_t *context = frame();
+    GlassPaint paint;
+    assert(glass_compose(context, WIDTH, HEIGHT, 40, &paint) == GLASS_APPLIED);
+    /* A new ATK edge with an old image is unsafe even inside the client.
+     * Rejection leaves previously composed rows translucent. This reproduces
+     * the adapter blocker; it is not an opaque-fallback acceptance check. */
+    assert(glass_compose(context, WIDTH, HEIGHT, 20, &paint) == GLASS_SOURCE_ALPHA);
+    for (int y = 20; y < 40; y++)
+        assert(row(context, y)[0] >> 24 == 184);
+    cairo_destroy(context);
+    puts("Known blocker reproduced: rejection does not clean up a reused glass buffer");
+}
+
 int main(void) {
     atomic_frame_and_ink();
     growing_and_shrinking_frames();
     partial_damage_and_unsupported();
     transformed_surface_and_disjoint_clip();
+    rejection_does_not_restore_a_reused_buffer();
     assert(strcmp(glass_reason(GLASS_APPLIED), "applied") == 0);
     puts("Client glass: atomic document/ink, resize, repeated draw, clip, surface and transform checks passed");
     return 0;
