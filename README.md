@@ -45,6 +45,23 @@ new integration refuses to overwrite it. Saved documents are unaffected.
 
 ## Components and compatibility
 
+### Direct desktop opt-in
+
+The explicit desktop integration launches the actual applications on the
+current GNOME session. It starts no nested Shell or Devkit viewer and accepts
+real document paths/URLs from the normal suite shortcuts and file associations.
+A separate persistent Norvi profile retains its settings across launches;
+the original LibreOffice profile is preserved. The shared native command broker
+routes each header to its own frame when several documents or modules are open.
+
+After locally qualifying a candidate, install the user integration with
+`python3 scripts/install_native_desktop.py /path/to/candidate.deb`.
+The new compositor extension requires a sign-out/sign-in on GNOME 50; its old
+reload API is disabled. Existing open work is never closed for activation.
+Restore the preceding launchers with `norvi-office-native-uninstall`; profiles
+and documents remain, and open applications can be closed normally.
+This is an opt-in desktop qualification path, not automatic stable promotion.
+
 ### Visible design preview
 
 The normal Office launcher currently enables the loading prompt and icon only.

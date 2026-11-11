@@ -12,7 +12,10 @@ const API = `<node><interface name="dev.norvi.OfficeGeometry">
   <method name="Report"><arg type="s" direction="in"/></method>
   <method name="PrepareChrome"><arg type="i" direction="in"/></method>
   <method name="State"><arg type="s" direction="out"/></method>
+  <method name="CaptureNative"><arg type="i" direction="in"/><arg type="s" direction="in"/></method>
+  <method name="ProbeBackdrop"><arg type="i" direction="in"/><arg type="b" direction="in"/></method>
 </interface></node>`;
+Gio._promisify(Shell.Screenshot.prototype, 'screenshot_area');
 // Input invalidates the ribbon boundary until its next measured layout. A
 // fixed delay here made every tab click flash opaque for half a second.
 const TRANSITION_HOLD = 0;
@@ -84,7 +87,10 @@ const RevealBackdrop = GObject.registerClass(class RevealBackdrop extends Clutte
 
 export default class NorviOffice extends Extension {
     enable() {
-        if (!GLib.getenv('NORVI_OFFICE_TEST_DIR'))
+        const marker = Gio.File.new_for_path(GLib.build_filenamev([
+            GLib.get_user_data_dir(), 'norvi-office', 'native-host', 'enabled.json']));
+        this.nativeHost = marker.query_exists(null);
+        if (!GLib.getenv('NORVI_OFFICE_TEST_DIR') && !marker.query_exists(null))
             throw new Error('Launch the isolated Norvi Office preview harness.');
         this.entries = new Map();
         this.geometry = [];
@@ -168,10 +174,61 @@ export default class NorviOffice extends Extension {
     State() {
         const box = rect => [rect.x, rect.y, rect.width, rect.height];
         return JSON.stringify([...this.entries.values()].map(entry => ({
-            app: moduleFor(entry.window), enabled: entry.mask.enabled,
+            app: moduleFor(entry.window), pid: entry.window.get_pid(), enabled: entry.mask.enabled,
             edge: entry.edge, reason: entry.reason, transitionCount: entry.transitionCount,
             frame: box(entry.window.get_frame_rect()), buffer: box(entry.window.get_buffer_rect()),
         })));
+    }
+
+    nativeEntry(pid) {
+        const entry = [...this.entries.values()].find(item => item.window.get_pid() === pid &&
+            this.geometry.some(g => g.pid === pid && g.title === item.window.get_title()));
+        if (!this.nativeHost || !entry)
+            throw new Error('No enrolled desktop Office window');
+        return entry;
+    }
+
+    ProbeBackdrop(pid, pattern) {
+        const entry = this.nativeEntry(pid);
+        entry.probe?.destroy();
+        entry.probe = null;
+        if (!pattern)
+            return;
+        const actor = entry.window.get_compositor_private();
+        const rect = entry.window.get_buffer_rect();
+        entry.probe = new St.Widget({x: rect.x, y: rect.y, width: rect.width, height: rect.height,
+            reactive: false, style: 'background-color: #272727;'});
+        entry.probe.add_child(new St.Widget({x: 350, y: 0, width: 420, height: rect.height,
+            reactive: false, style: 'background-color: #7460d4;'}));
+        actor.get_parent().insert_child_below(entry.probe, actor);
+    }
+
+    async CaptureNativeAsync([pid, name], invocation) {
+        try {
+            if (!/^[a-z-]+\.png$/.test(name))
+                throw new Error('Invalid capture name');
+            const entry = this.nativeEntry(pid);
+            entry.window.activate(global.get_current_time());
+            await new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
+                resolve();
+                return GLib.SOURCE_REMOVE;
+            }));
+            if (global.display.focus_window !== entry.window)
+                throw new Error('Office window is not focused');
+            const rect = entry.window.get_frame_rect();
+            const directory = GLib.build_filenamev([GLib.get_user_state_dir(), 'norvi-office', 'native-evidence']);
+            GLib.mkdir_with_parents(directory, 0o700);
+            const file = Gio.File.new_for_path(GLib.build_filenamev([directory, name]));
+            const stream = file.replace(null, false, Gio.FileCreateFlags.NONE, null);
+            try {
+                await new Shell.Screenshot().screenshot_area(rect.x, rect.y, rect.width, rect.height, false, stream);
+            } finally {
+                stream.close(null);
+            }
+            invocation.return_value(null);
+        } catch (error) {
+            invocation.return_dbus_error('dev.norvi.OfficeGeometry.Error', error.message);
+        }
     }
 
     syncAll() {
@@ -264,7 +321,7 @@ export default class NorviOffice extends Extension {
             // Calc's pinned Tabbed preview has a fixed 37px tab band at dark 1×.
             // Require enough measured ribbon height and keep every painted pixel above edge.
             const panelTop = geometry.join + 36;
-            const panel = module === 'calc' && GLib.getenv('NORVI_OFFICE_CALC_RIBBON') === '1' &&
+            const panel = module === 'calc' && (this.nativeHost || GLib.getenv('NORVI_OFFICE_CALC_RIBBON') === '1') &&
                 geometry.join_start !== undefined && geometry.edge - panelTop >= 55;
             uniform(mask, 'panel_top', panel ? panelTop / buffer.height : 0);
             if (panel) {
@@ -287,6 +344,7 @@ export default class NorviOffice extends Extension {
         if (!entry)
             return;
         this.entries.delete(actor);
+        entry.probe?.destroy();
         actor.meta_window?.disconnectObject(this);
         if (!destroyed) {
             actor.disconnectObject(this);
