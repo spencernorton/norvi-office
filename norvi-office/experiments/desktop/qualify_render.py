@@ -2,6 +2,7 @@
 """Qualify render synchronization headlessly; never present this as host evidence."""
 import argparse
 import json
+import math
 import os
 from pathlib import Path
 import shutil
@@ -12,6 +13,45 @@ import tempfile
 import time
 
 HERE = Path(__file__).resolve().parent
+
+
+def notebook_tabs(frame, api):
+    """Find the named notebook tabs without walking the document's cells/text."""
+    found = []
+    excluded = (api.Role.DOCUMENT_TEXT, api.Role.TABLE)
+
+    def visit(node, depth=0):
+        if node is None or depth > 12 or node.get_role() in excluded:
+            return
+        if node.get_role() == api.Role.PAGE_TAB:
+            found.append(node)
+            return
+        for index in range(min(node.get_child_count(), 128)):
+            visit(node.get_child_at_index(index), depth + 1)
+
+    visit(frame)
+    return found
+
+
+def selected_tab(frame, api):
+    selected = [node.get_name() for node in notebook_tabs(frame, api)
+                if node.get_state_set().contains(api.StateType.SELECTED)]
+    if len(selected) != 1:
+        raise AssertionError(f"Expected one selected notebook tab, observed {selected!r}")
+    return selected[0]
+
+
+def activate_tab(frame, name, api):
+    before = selected_tab(frame, api)
+    if before == name:
+        raise AssertionError("Qualification must exercise a real tab change")
+    matches = [node for node in notebook_tabs(frame, api) if node.get_name() == name]
+    if len(matches) != 1:
+        raise AssertionError(f"Expected exactly one {name!r} notebook tab")
+    action = matches[0].get_action_iface()
+    if action is None or action.get_n_actions() < 1 or not action.do_action(0):
+        raise AssertionError(f"Notebook tab {name!r} did not accept activation")
+    return before
 
 
 def outer(candidate, app):
@@ -41,7 +81,8 @@ def outer(candidate, app):
 def inside(output):
     import gi
     gi.require_version("Gio", "2.0")
-    from gi.repository import Gio, GLib
+    gi.require_version("Atspi", "2.0")
+    from gi.repository import Atspi, Gio, GLib
     from PIL import Image, ImageChops
     connection = Gio.bus_get_sync(Gio.BusType.SESSION, None)
     app = os.environ.get("NORVI_OFFICE_QUAL_APP", "calc")
@@ -100,15 +141,44 @@ def inside(output):
         call("OfficeTest", "WindowState", "(s)", "maximized")
         active = wait(lambda: (s if (s := state()) and s["enabled"] and s["geometry_source"] == "native-render" else None),
                       "Native render geometry never became active")
+        record = json.loads((native / "running.json").read_text())
+
+        def owned_frame():
+            desktop = Atspi.get_desktop(0)
+            for index in range(desktop.get_child_count()):
+                application = desktop.get_child_at_index(index)
+                try:
+                    if os.getpgid(application.get_process_id()) != record["office_group"]:
+                        continue
+                    for child in range(application.get_child_count()):
+                        frame = application.get_child_at_index(child)
+                        if frame is not None and frame.get_role() == Atspi.Role.FRAME:
+                            return frame
+                except (ProcessLookupError, PermissionError, GLib.Error):
+                    continue
+            return None
+
+        frame = wait(owned_frame, "The owned qualification window is not accessible")
+
+        def home_ready():
+            try:
+                return selected_tab(frame, Atspi) == "Home"
+            except AssertionError:
+                return False
+
+        wait(home_ready, "Initial Home tab was not selected")
         samples = []
-        x, y, _width, _height = active["frame"]
-        for tab, offset in (("Insert", 255), ("Home", 150), ("Layout", 350), ("Home", 150)):
-            call("OfficeTest", "Click", "(ii)", x + offset, y + 66)
+        transitions = []
+        for tab in ("Insert", "Home", "Layout", "Home"):
+            before = activate_tab(frame, tab, Atspi)
             start = time.monotonic()
             while time.monotonic() - start < .6:
                 s = state()
                 samples.append({"tab": tab, "enabled": s["enabled"], "reason": s["reason"], "source": s["geometry_source"]})
                 time.sleep(.008)
+            after = selected_tab(frame, Atspi)
+            assert after == tab, f"Tab activation did not change selection: {before!r} -> {after!r}, expected {tab!r}"
+            transitions.append({"before": before, "after": after})
         assert all(s["enabled"] and s["reason"] == "active" and s["source"] == "native-render" for s in samples), samples
         active = state()
         paths = []
@@ -122,11 +192,12 @@ def inside(output):
         edge = buffer[1] + active["edge"] - frame[1]
         differences = {}
         for label, box in (("header", (80, 8, first.width - 80, edge - 8)),
-                           ("body", (80, max(350, edge + 150), first.width - 80, first.height - 100))):
+                           ("body", (80, max(0, math.ceil(edge)), first.width - 80, first.height - 100))):
             delta = ImageChops.difference(first.crop(box), second.crop(box))
             differences[label] = sum(max(pixel) > 0 for pixel in delta.get_flattened_data())
         assert differences["header"] > 1000 and differences["body"] == 0, differences
         result = {"kind": "headless qualification; not physical host evidence", "app": app, "render_source": active["geometry_source"],
+                  "verified_tab_transitions": transitions,
                   "tab_samples": len(samples), "opaque_or_transition_samples": 0, "backdrop_changed_pixels": differences,
                   "geometry": active}
         (output / "receipt.json").write_text(json.dumps(result, indent=2) + "\n")
