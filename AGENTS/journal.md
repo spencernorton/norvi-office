@@ -1,5 +1,21 @@
 # Journal
 
+## 2026-11-11 — Cover shared Home, Insert and shortcut command artwork
+
+- Audited actual official Calc, Writer and Impress notebookbar command keys,
+  including both upstream action property spellings and dotted shape keys.
+  Added seventy shared keys on the existing 24-unit grid, bringing the theme to
+  141 keys. Native font/format fields and all command bindings remain intact.
+- The source receipt covers Home/Insert, custom Calc Formulas and retained
+  shortcut strips. Light/dark package regressions check every recorded key at
+  three sizes, real theme aliases, untouched fallback artwork and licenses.
+  Line/fill artwork reserves the native live-color swatch band. Calc's explicit
+  Conditional Formatting label now matches its single-line registry label.
+- Twenty-four Python tests pass, with three Linux-only skips; focused lint,
+  compilation and diff checks pass. Rendered artwork was inspected headlessly.
+  No installed profile, application bundle or desktop was changed. Installed
+  visual acceptance, remaining tabs and complete six-module coverage are pending.
+
 ## 2026-11-11 — Preserve removed launchers during desktop restoration
 
 - Removing the native integration now accepts missing owned entries without

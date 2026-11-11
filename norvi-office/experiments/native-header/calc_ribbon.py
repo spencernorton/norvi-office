@@ -24,7 +24,9 @@ LABEL_GROUPS = (
 
 
 
-# The study's command artwork, drawn on a shared 24-unit grid.
+# The study's command artwork, drawn on a shared 24-unit grid. Home and Insert
+# keys are taken from the official Calc, Writer and Impress notebookbars. Native
+# field controllers (font, size, number format) continue to supply their own UI.
 ICONS = {
     "justifypara": ("M4 5h16M4 9h16M4 13h16M4 17h16", "#f2eff8"),
     "charmapcontrol": ("M3 21h6v-3a8 8 0 1 1 6 0v3h6", "#f2eff8"),
@@ -94,10 +96,77 @@ ICONS = {
     "numberformatincdecimals": ("M3 17h1m5-7c-3 0-3 7 0 7s3-7 0-7m6-5h6m-3-3 3 3-3 3", "#c1aaf3"),
     "numberformatdecdecimals": ("M2 17h1m5-7c-3 0-3 7 0 7s3-7 0-7m8 0c-3 0-3 7 0 7s3-7 0-7m0-5H8m3-3-3 3 3 3", "#c1aaf3"),
     "searchdialog": ("M19 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Zm-2 5 5 6", "#f2eff8"),
+    "shadowed": ("M3 19 10 3l7 16M6 13h8m1-6 6 15h-5", "#f2eff8"),
+    "spacing": ("M3 12 7 3l4 9M5 8h4m6-5v9m0-6h3a3 3 0 0 1 0 6h-3M3 19h18m-15-3-3 3 3 3m12-6 3 3-3 3", "#f2eff8"),
+    "controlcodes": ("M13 21V3h7M18 3v18M13 3H9a5 5 0 0 0 0 10h4", "#f2eff8"),
+    "stylespreview": ("M3 3h18v18H3Zm3 13 3-7 3 7m-5-2h4m4-6h3m-3 4h3m-3 4h3", "#c1aaf3"),
+    "zoom": ("M19 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Zm-2 5 5 6M8 10h8m-4-4v8", "#f2eff8"),
+    "printpreview": ("M5 9V3h14v4M5 17v4h6M3 9h14v5M3 9v8h7m10-1a4 4 0 1 1-8 0 4 4 0 0 1 8 0Zm-1 3 4 4", "#f2eff8"),
+    "navigator": ("M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-6-3-2 4-4 2 2-4Z", "#f2eff8"),
+    "datadatapilotrun": ("M3 4h17v7M3 4v16h8M3 9h17M8 4v16m5-11v3m1 5h7m-3-3 3 3-3 3m-4-5v6", "#f2eff8"),
+    "insert": ("M3 4h17v9M3 4v16h9M3 9h17M8 4v16m5-16v9M3 14h9m5 1v7m-4-3.5h8", "#f2eff8"),
+    "insertcell": ("M3 3h8v8H3Zm8 3h10v15H6V11m5 0h10M6 16h15m-5-10v15M5 7h4M7 5v4", "#f2eff8"),
+    "insertobject": ("M4 3h12l4 4v14H4Zm12 0v5h4M8 11h8v7H8Z", "#f2eff8"),
+    "gallery": ("M7 3h14v14M3 7h14v14H3Zm0 10 4-4 4 4 3-3 3 3M12 11h.1", "#f2eff8"),
+    "insertavmedia": ("M3 4h18v16H3Zm6 4 7 4-7 4ZM3 8h3m-3 8h3M18 8h3m-3 8h3", "#f2eff8"),
+    "addname": ("M3 5h14l4 7-4 7H3Zm4 4v6m-3-3h6m4-3h2m-2 6h2", "#f2eff8"),
+    "definename": ("M3 5h14l4 7-4 7H3Zm3 10V9l4 6V9m3 0h3m-3 6h3", "#f2eff8"),
+    "fieldmenu": ("M4 3h12l4 4v14H4Zm12 0v5h4M10 11H8v2l-1 1 1 1v2h2m4-6h2v2l1 1-1 1v2h-2", "#f2eff8"),
+    "drawtext": ("M3 3h18v18H3Zm4 5V7h10v1m-5-1v10m-3 0h6", "#f2eff8"),
+    "verticaltext": ("M3 3h18v18H3Zm4 4h7m-3.5 0v9M8 16h5m4-8v9m-2-2 2 2 2-2", "#f2eff8"),
+    "line": ("M4 20 20 4", "#f2eff8"),
+    "connectortoolbox": ("M3 3h5v5H3Zm13 13h5v5h-5ZM8 5.5h4v13h4", "#f2eff8"),
+    "arrowstoolbox": ("M3 20 20 3m-8 0h8v8", "#f2eff8"),
+    "basicshapes.rectangle": ("M3 5h18v14H3Z", "#f2eff8"),
+    "basicshapes.ellipse": ("M21 12a9 7 0 1 1-18 0 9 7 0 0 1 18 0Z", "#f2eff8"),
+    "drawcaption": ("M3 4h18v13H10l-7 4Zm4 5h10m-10 4h7", "#f2eff8"),
+    "linetoolbox": ("M3 20 9 6l6 12 6-14", "#f2eff8"),
+    "basicshapes": ("M3 3h10v10H3Zm18 13a5 5 0 1 1-10 0 5 5 0 0 1 10 0Z", "#f2eff8"),
+    "symbolshapes": ("M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0ZM8 9h.1m7.9 0h.1M7 14c2 5 8 5 10 0", "#f2eff8"),
+    "arrowshapes": ("M3 8h10V3l8 9-8 9v-5H3Z", "#f2eff8"),
+    "starshapes": ("m12 2 3 6 7 1-5 5 1 8-6-4-6 4 1-8-5-5 7-1Z", "#f2eff8"),
+    "flowchartshapes": ("M8 2h8v6H8Zm4 6v4m-6 4h12m-6-4v4m-9 0h6v6H3Zm12 0h6v6h-6Z", "#f2eff8"),
+    # The bottom three units remain clear for the native selected-color swatch.
+    # These are neutral command glyphs, never a painted-in current color.
+    "xlinecolor": ("M4 4h16v14H4Z", "#f2eff8"),
+    "fillcolor": ("m4 12 8-8 8 8-8 7Zm4-4 4-4V2m6 11 3 4a2 2 0 1 1-4 0Z", "#f2eff8"),
+    "presentation": ("M3 3h18v14H3ZM10 7l6 3-6 3ZM7 7v6m5 4v4M7 21h10", "#c1aaf3"),
+    "presentationcurrentslide": ("M3 3h18v14H3ZM9 7l7 3-7 3ZM12 17v4M7 21h10", "#c1aaf3"),
+    "insertslide": ("M3 4h18v12H3Zm3 4h9m-9 4h5m6 4v6m-3-3h6", "#f2eff8"),
+    "duplicateslide": ("M8 8h13v13H8ZM4 16H3V3h13v1M11 12h7m-7 4h4", "#f2eff8"),
+    "importslidefromfile": ("M3 3h11l4 4v6M3 3v15h7M14 3v5h4m-2 9H9m3-3-3 3 3 3m4-6h5v8h-5", "#f2eff8"),
+    "photoalbumdialog": ("M6 3h15v18H6ZM3 6h3m-3 6h3m-3 6h3m3-10h9v9H9Zm0 6 3-3 3 3 2-2", "#f2eff8"),
+    "fontworkgalleryfloater": ("M3 19 8 6l5 13M5 14h6m3-7 2 12 3-9 2 9M3 4c5-3 13-3 18 0", "#f2eff8"),
+    "capturepoint": ("M12 3v18M3 12h18M8 8h8v8H8Z", "#f2eff8"),
+    "polygon_unfilled": ("M3 17 7 4l13 3 1 12-12 2Z", "#f2eff8"),
+    "bezier_unfilled": ("M3 18C6 3 18 21 21 6M3 18V9m18-3v9M1 7h4v4H1Zm18 6h4v4h-4Z", "#f2eff8"),
+    "objects3dtoolbox": ("m12 2 9 5v10l-9 5-9-5V7Zm-9 5 9 5 9-5m-9 5v10", "#f2eff8"),
+    "insertmath": ("M2 13h3l3 8 5-18h9m-7 8 6 8m0-8-6 8", "#f2eff8"),
+    "titlepagedialog": ("M4 3h16v18H4Zm4 5h8m-6 0v6m-2 3h8", "#f2eff8"),
+    "insertsection": ("M3 3h18v18H3ZM7 7h3m-3 5h3m-3 5h3m4-10h3m-3 5h3m-3 5h3M12 3v18", "#f2eff8"),
+    "insertbookmark": ("M6 3h12v18l-6-4-6 4Z", "#f2eff8"),
+    "insertreferencefield": ("M4 3h12l4 4v14H4Zm12 0v5h4M7 12h10m-3-3 3 3-3 3M7 17h7", "#f2eff8"),
+    "editglossary": ("M3 3h8v18H3Zm8 3h10v15H11M6 7h2m-2 4h2m-2 4h2m6-5h4m-4 4h4", "#f2eff8"),
+    "insertdraw": ("M3 3h18v18H3Zm4 4h6v6H7Zm10 9a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z", "#f2eff8"),
+    "toggleformula": ("M3 4h18v16H3ZM3 9h18M8 13h8m-8 4h8", "#f2eff8"),
+    "open": ("M3 19V4h7l3 4h8v3M3 19l3-8h16l-3 8Z", "#f2eff8"),
+    "save": ("M3 3h15l3 3v15H3Zm4 0v6h10V3M7 21v-8h10v8", "#f2eff8"),
+    "undo": ("M3 10h10a7 7 0 0 1 7 7v3M3 10l6-6m-6 6 6 6", "#f2eff8"),
+    "redo": ("M21 10H11a7 7 0 0 0-7 7v3m17-10-6-6m6 6-6 6", "#f2eff8"),
+    "print": ("M6 9V3h12v6M6 17H3V9h18v8h-3M6 14h12v7H6Zm11-2h1", "#f2eff8"),
+    "menubar": ("M3 5h18M3 12h18M3 19h18", "#f2eff8"),
 }
 
-for alias, original in {"leftpara": "alignleft", "centerpara": "alignhorizontalcenter",
-                        "rightpara": "alignright"}.items():
+# Commands that use the same native concept share artwork; retain their real
+# icon lookup keys (including the dot in BasicShapes.rectangle/ellipse).
+for alias, original in {
+    "leftpara": "alignleft", "centerpara": "alignhorizontalcenter", "rightpara": "alignright",
+    "setdefault": "resetattributes", "cellverttop": "aligntop", "cellvertcenter": "alignvcenter",
+    "cellvertbottom": "alignbottom", "outlineright": "incrementindent", "outlineleft": "decrementindent",
+    "functionbox": "functiondialog", "text": "drawtext", "insertfieldctrl": "fieldmenu",
+    "calloutshapes": "drawcaption", "insertobjectstarmath": "insertmath",
+    "openfromcalc": "open", "openfromwriter": "open",
+}.items():
     ICONS[alias] = ICONS[original]
 
 
@@ -292,7 +361,7 @@ def build_home(tree, dark):
     set_property("Home-Section-Format", "margin_start", "8")
     set_property("Home-RowOperations", "label", "Rows")
     set_property("Home-ColumnOperations", "label", "Columns")
-    set_property("Home-ConditionalFormatMenu", "label", "Conditional\nFormatting")
+    set_property("Home-ConditionalFormatMenu", "label", "Conditional Formatting")
     # The native StyleApply combobox takes a full field's width. Use the
     # native Cell Styles deck for the study's compact labeled action.
     set_property("Home-StyleApply", "action_name", ".uno:ViewSidebarStyles")

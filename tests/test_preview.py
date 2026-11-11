@@ -10,6 +10,7 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+import xml.etree.ElementTree as ET
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -155,6 +156,54 @@ class PreviewTests(unittest.TestCase):
             self.assertEqual(parent["XDG_CONFIG_HOME"], "live-config")
             self.assertEqual(len(environment["NORVI_OFFICE_HEADER_TOKEN"]), 64)
             self.assertEqual(os.stat(workspace / "runtime").st_mode & 0o777, 0o700)
+
+    def test_shared_artwork_covers_audited_commands_and_retains_native_fallbacks(self):
+        ribbon = load("shared_ribbon_artwork", EXPERIMENTS / "native-header/calc_ribbon.py")
+        receipt = json.loads((ROOT / "tests/fixtures/notebookbar-artwork.json").read_text())
+        # Real Sifr aliases and dotted shape names exercise native lookup keys,
+        # rather than assuming a command's display label is its image filename.
+        overridden = {
+            "cmd/sc_drawtext.svg": "cmd/sc_text.svg",
+            "cmd/lc_setdefault.svg": "cmd/lc_resetattributes.svg",
+            "cmd/32/cellverttop.svg": "cmd/32/aligntop.svg",
+            "cmd/lc_openfromwriter.svg": "cmd/lc_open.svg",
+        }
+        fallback = "cmd/lc_upstream.svg cmd/lc_original.svg\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base, icons = root / "base.oxt", root / "official-icons.zip"
+            with ZipFile(base, "w") as archive:
+                archive.writestr("norvi_glass.xcu", (ROOT / "norvi-office/extension/norvi_glass.xcu").read_bytes())
+            with ZipFile(icons, "w") as archive:
+                archive.writestr("links.txt", "".join(f"{key} {target}\n" for key, target in overridden.items()) + fallback)
+                archive.writestr("LICENSE", "official theme license")
+                archive.writestr("cmd/lc_original.svg", "upstream fallback artwork")
+                for field in receipt["native_fields"]:
+                    archive.writestr(f"cmd/lc_{field}.svg", "native field controller artwork")
+            for appearance, ink in (("dark", "#f2eff8"), ("light", "#2e3436")):
+                with self.subTest(appearance=appearance):
+                    output = root / f"{appearance}.oxt"
+                    ribbon.preview_package(base, output, "impress", icons, appearance)
+                    style = "sifr_dark_svg" if appearance == "dark" else "sifr_svg"
+                    with ZipFile(output) as package, ZipFile(BytesIO(package.read(f"iconsets/images_{style}.zip"))) as theme:
+                        self.assertNotIn(b"Cell Styles", package.read("norvi_glass.xcu"))
+                        self.assertEqual(theme.read("LICENSE"), b"official theme license")
+                        self.assertEqual(theme.read("links.txt"), fallback.encode())
+                        self.assertEqual(theme.read("cmd/lc_original.svg"), b"upstream fallback artwork")
+                        for field in receipt["native_fields"]:
+                            self.assertEqual(theme.read(f"cmd/lc_{field}.svg"), b"native field controller artwork")
+                        for module, audit in receipt["modules"].items():
+                            for tab, commands in audit["tabs"].items():
+                                for command in commands:
+                                    for prefix, size in (("sc_", 16), ("lc_", 24), ("32/", 32)):
+                                        with self.subTest(module=module, tab=tab, command=command, size=size):
+                                            svg = ET.fromstring(theme.read(f"cmd/{prefix}{command}.svg"))
+                                            self.assertEqual(svg.get("viewBox"), "0 0 24 24")
+                                            self.assertEqual(svg.get("width"), str(size))
+                                            path = svg.find("{http://www.w3.org/2000/svg}path")
+                                            self.assertEqual(path.get("fill"), "none")
+                                            self.assertEqual(path.get("stroke-width"), "1.55")
+                                            self.assertIn(path.get("stroke"), (ink, "#c1aaf3" if appearance == "dark" else "#7460d4"))
 
 
 if __name__ == "__main__":
