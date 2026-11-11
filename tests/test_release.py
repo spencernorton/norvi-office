@@ -62,6 +62,26 @@ class ReleaseTests(unittest.TestCase):
                 self.assertFalse(launcher.exists())
                 self.assertFalse((home / 'share/norvi-office/startup').exists())
 
+    def test_ignored_local_material_cannot_enter_the_package(self):
+        spec = importlib.util.spec_from_file_location('package_builder', ROOT / 'scripts/build.py')
+        builder = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(builder)
+        with tempfile.TemporaryDirectory() as temporary:
+            tree = Path(temporary)
+            subprocess.run(['git', 'init', '-q', str(tree)], check=True)
+            (tree / '.gitignore').write_text('private-cache/\n')
+            assets = tree / 'assets'
+            assets.mkdir()
+            (assets / 'approved.txt').write_text('approved')
+            ignored = assets / 'private-cache'
+            ignored.mkdir()
+            (ignored / 'notes.txt').write_text('must not ship')
+            subprocess.run(['git', '-C', str(tree), 'add', '.gitignore', 'assets/approved.txt'], check=True)
+            destination = tree / 'package'
+            with patch.object(builder, 'ROOT', tree):
+                builder.copy_source(assets, destination)
+            self.assertEqual(sorted(p.name for p in destination.iterdir()), ['approved.txt'])
+
     def test_unknown_native_build_is_not_enabled(self):
         contract = json.loads((ROOT / 'compatibility.json').read_text())['experimental_native_adapter']
         self.assertFalse(contract['enabled_by_default'])

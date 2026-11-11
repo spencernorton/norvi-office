@@ -62,7 +62,7 @@ def build(output):
         share = stage / "usr/share/norvi-office"
         share.mkdir(parents=True)
         source = ROOT / "norvi-office"
-        copy_source(source / "experiments/startup", share / "startup")
+        copy_source(source / "experiments/startup", share / "startup", runtime_only=True)
         (share / "startup/package-mode").write_text("Shared runtime managed by APT\n")
         experimental = share / "experimental"
         for name in ("native-header", "wayland-glass", "live-tools", "data-model"):
