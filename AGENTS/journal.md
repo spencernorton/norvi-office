@@ -1,5 +1,17 @@
 # Journal
 
+## 2026-11-11 — Bound unqualified desktop transparency
+
+- A synchronous geometry acknowledgment precedes the client buffer commit but
+  does not identify that buffer. Growing ribbon masks could therefore expose
+  document pixels from the preceding frame.
+- Direct-desktop effects now use only the fixed native titlebar band, including
+  the accessibility fallback. Dynamic ribbon transparency stays disabled until
+  committed-buffer association is qualified; diagnostic state says titlebar-only.
+- Fourteen pure geometry-policy checks pass locally, including reordered
+  growing/shrinking ribbon measurements and invalid-boundary rejection. Native
+  compositor acceptance remains pending; the installed host build is unchanged.
+
 ## 2026-11-11 — Recover desktop presentation helpers
 
 - Reused desktop sessions now verify their existing profile service and recover

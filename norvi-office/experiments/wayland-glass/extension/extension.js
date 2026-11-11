@@ -6,7 +6,7 @@ import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
-import {selectGeometry} from './geometryPolicy.js';
+import {selectGeometry, titlebarGeometry} from './geometryPolicy.js';
 
 const WINDOW_ID = /^(?:org\.libreoffice\.LibreOffice\.|libreoffice-)(writer|calc|impress|draw|base|math)$/i;
 const API = `<node><interface name="dev.norvi.OfficeGeometry">
@@ -363,6 +363,10 @@ export default class NorviOffice extends Extension {
             } else if (entry.direct) {
                 geometry = null;
             }
+            // This applies to the accessibility fallback as well: neither
+            // report path identifies which client buffer contains the layout.
+            if (this.nativeHost)
+                geometry = titlebarGeometry(geometry);
             const dark = this.interfaceSettings.get_string('color-scheme') === 'prefer-dark' &&
                 !this.contrastSettings.get_boolean('high-contrast') &&
                 !/highcontrast/i.test(this.interfaceSettings.get_string('gtk-theme'));
@@ -384,7 +388,7 @@ export default class NorviOffice extends Extension {
                 geometry = {...geometry, edge: geometry.join_start};
             const visible = supported && dark && valid && (!settling || titleOnly);
             entry.reason = !supported ? 'window-or-scale' : !dark ? 'appearance' :
-                settling ? 'transition' : !valid ? 'geometry' : 'active';
+                settling ? 'transition' : !valid ? 'geometry' : this.nativeHost ? 'native-titlebar-only' : 'active';
             entry.edge = visible ? geometry.edge : null;
             mask.enabled = Boolean(visible);
             blur.visible = Boolean(visible);

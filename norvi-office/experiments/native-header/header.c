@@ -227,8 +227,9 @@ static void report_native_geometry(Header *header) {
 static gboolean chrome_draw(GtkWidget *widget, cairo_t *context, gpointer data) {
     (void)widget;
     (void)context;
-    /* GTK finishes the draw signal before committing its new Wayland buffer.
-     * Ack the measured boundary first; tab input need not blank the ribbon. */
+    /* GTK finishes this signal before committing the new Wayland buffer.
+     * The acknowledgment orders the report, but does not bind it to a buffer.
+     * Direct-desktop masking therefore remains titlebar-only until qualified. */
     report_native_geometry(data);
     return FALSE;
 }
