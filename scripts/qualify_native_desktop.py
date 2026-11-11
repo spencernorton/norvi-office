@@ -39,10 +39,13 @@ def frame_for(document, pid):
             if app.get_process_id() != pid:
                 continue
             for frame in geometry.children(app):
-                if frame.get_role() == Atspi.Role.FRAME and frame.get_name().startswith(title):
-                    bars = header_bars(frame)
-                    if len(bars) == 1:
-                        return frame, {n.get_name(): n for n in controls(bars[0])}
+                try:
+                    if frame.get_role() == Atspi.Role.FRAME and frame.get_name().startswith(title):
+                        bars = header_bars(frame)
+                        if len(bars) == 1:
+                            return frame, {n.get_name(): n for n in controls(bars[0])}
+                except GLib.Error:
+                    continue  # A disposed sibling must not hide the live owned frame.
         return None
     return wait(find, "The owned document did not acquire a native host header")
 
