@@ -52,13 +52,48 @@ class NativeDesktopTests(unittest.TestCase):
     def test_original_profile_shortcuts_and_documents_survive_install_edit_protection_and_rollback(self):
         self.exercise_install(False)
 
+    def test_application_menu_enrollment_omits_new_desktop_copies(self):
+        self.exercise_install(False, desktop_shortcuts=False)
+
+    def test_removal_preserves_deleted_entries_and_refuses_replacements(self):
+        installer = load("native_removed_shortcuts_test", ROOT / "norvi-office/experiments/desktop/integrate.py")
+        with tempfile.TemporaryDirectory() as directory:
+            home = Path(directory)
+            data = home / "share"
+            state = data / "norvi-office/native-host"
+            backups = state / "backups"
+            backups.mkdir(parents=True)
+            deleted = home / "Office Calc.desktop"
+            kept = home / "Office Writer.desktop"
+            kept.write_bytes(b"managed writer")
+            (backups / "0").write_bytes(b"previous calc shortcut")
+            (backups / "1").write_bytes(b"previous writer shortcut")
+            records = [{"path": str(deleted), "backup": "0", "sha256": hashlib.sha256(b"managed calc").hexdigest()},
+                       {"path": str(kept), "backup": "1", "sha256": installer.sha(kept)}]
+            (state / "manifest.json").write_text(json.dumps({"files": records}))
+            with patch.object(installer, "locations", return_value=(home, data, state)), \
+                    patch.object(installer, "activation") as activate, \
+                    patch.object(installer.subprocess, "run") as run:
+                # A dangling symlink is a replacement, not a deletion.
+                deleted.symlink_to(home / "missing user target")
+                with self.assertRaises(ValueError):
+                    installer.uninstall()
+                self.assertTrue(deleted.is_symlink())
+                activate.assert_not_called()
+                run.assert_not_called()
+                deleted.unlink()
+                installer.uninstall()
+            self.assertFalse(deleted.exists())
+            self.assertEqual(kept.read_bytes(), b"previous writer shortcut")
+            self.assertFalse(state.exists())
+
     def test_failed_activation_restores_the_complete_previous_integration(self):
         self.exercise_install(True)
 
     def test_preview_changed_during_install_is_preserved_while_new_shortcuts_are_rolled_back(self):
         self.exercise_install("preview-edit")
 
-    def exercise_install(self, fail):
+    def exercise_install(self, fail, desktop_shortcuts=True):
         installer = load("native_installer_test", ROOT / "norvi-office/experiments/desktop/integrate.py")
         with tempfile.TemporaryDirectory() as directory:
             home = Path(directory) / "home"
@@ -135,15 +170,15 @@ class NativeDesktopTests(unittest.TestCase):
                     patch.object(installer, "activation", side_effect=activation):
                 if fail:
                     with self.assertRaises(ValueError):
-                        installer.install(candidate)
+                        installer.install(candidate, desktop_shortcuts)
                 else:
-                    installer.install(candidate)
+                    installer.install(candidate, desktop_shortcuts)
                     installed = target.read_text()
                     self.assertIn("Name=Office Calc", installed)
                     self.assertIn("--desktop --app calc %U", installed)
                     self.assertEqual({path.name for path in desktop.glob("Office*.desktop") if "Preview" not in path.name},
                                      {"Office.desktop", "Office Calc.desktop", "Office Writer.desktop", "Office Impress.desktop",
-                                      "Office Draw.desktop", "Office Base.desktop", "Office Math.desktop"})
+                                      "Office Draw.desktop", "Office Base.desktop", "Office Math.desktop"} if desktop_shortcuts else set())
                     self.assertFalse((desktop / "Office Preview - calc.desktop").exists())
                     self.assertFalse((data / "applications/norvi-office-preview-calc.desktop").exists())
                     self.assertFalse((data / "applications/norvi-office-preview-writer.desktop").exists())
@@ -164,7 +199,7 @@ class NativeDesktopTests(unittest.TestCase):
                     target.write_text(installed)
                     installer.uninstall()
                     # Re-enrollment can reuse an unchanged retained runtime.
-                    installer.install(candidate)
+                    installer.install(candidate, desktop_shortcuts)
                     installer.uninstall()
             self.assertEqual(original.read_bytes(), b"original profile must remain untouched")
             self.assertEqual(saved.read_bytes(), b"saved work")

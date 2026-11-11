@@ -78,7 +78,7 @@ def prune_empty(directory):
         pass
 
 
-def install(candidate):
+def install(candidate, desktop_shortcuts=True):
     home, data, state = locations()
     if state.exists():
         raise ValueError("Desktop integration already exists; use its uninstall command before replacing it")
@@ -135,7 +135,7 @@ def install(candidate):
             lines.append(line)
         content = ("\n".join(lines) + "\n").encode()
         payloads[target] = (content, 0o644)
-        if desktop_dir.is_absolute() and desktop_dir != home:
+        if desktop_shortcuts and desktop_dir.is_absolute() and desktop_dir != home:
             name = "Office" if app == "startcenter" else f"Office {app.title()}"
             payloads[desktop_dir / f"{name}.desktop"] = (content, 0o755)
     extension = root / "usr/share/norvi-office/experimental/wayland-glass/extension"
@@ -217,17 +217,24 @@ def install(candidate):
 def uninstall():
     _home, data, state = locations()
     manifest = json.loads((state / "manifest.json").read_text())
+    deleted = set()
     for record in manifest["files"]:
         target = Path(record["path"])
         if record.get("removed"):
             if target.exists() or target.is_symlink():
                 raise ValueError(f"A retired preview shortcut was replaced; preserved all files: {target.name}")
+        elif not target.exists() and not target.is_symlink():
+            # Removing an owned launcher is a user change too. Do not recreate
+            # it from its preceding backup while restoring the other entries.
+            deleted.add(target)
         elif target.is_symlink() or not target.is_file() or sha(target) != record["sha256"]:
             raise ValueError(f"A managed file changed; preserved all files: {target.name}")
     subprocess.run(["gnome-extensions", "disable", UUID], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     activation(False)
     for record in manifest["files"]:
         target = Path(record["path"])
+        if target in deleted:
+            continue
         if record["backup"] is not None:
             shutil.copy2(state / "backups" / record["backup"], target)
             if record.get("desktop"):
@@ -244,10 +251,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("candidate", nargs="?", type=Path)
     parser.add_argument("--uninstall", action="store_true")
+    parser.add_argument("--no-desktop-shortcuts", action="store_true",
+                        help="Install application-menu entries without adding desktop copies")
     args = parser.parse_args()
     if not args.uninstall and args.candidate is None:
         parser.error("Provide a locally qualified Debian candidate")
     try:
-        uninstall() if args.uninstall else install(args.candidate)
+        uninstall() if args.uninstall else install(args.candidate, not args.no_desktop_shortcuts)
     except (OSError, ValueError, subprocess.CalledProcessError) as error:
         parser.exit(1, f"Office desktop integration: {error}\n")

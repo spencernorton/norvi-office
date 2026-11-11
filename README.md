@@ -73,6 +73,9 @@ reload API is disabled. Existing open work is never closed for activation.
 Restore the preceding launchers with `norvi-office-native-uninstall`; profiles
 and documents remain, and open applications can be closed normally.
 Restore the native integration before using an older preview removal command.
+Removal preserves deleted managed entries as well as saved work; edited or
+replaced entries stop removal so their contents can be reviewed. To enroll only
+the application-menu entries, pass `--no-desktop-shortcuts` to the installer.
 This is an opt-in desktop qualification path, not automatic stable promotion.
 
 ### Native Mac design trial

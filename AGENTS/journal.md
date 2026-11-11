@@ -1,5 +1,16 @@
 # Journal
 
+## 2026-11-11 — Preserve removed launchers during desktop restoration
+
+- Removing the native integration now accepts missing owned entries without
+  recreating their preceding backups. Edited files and replacement symlinks
+  still stop restoration before any settings or files change.
+- Added an application-menu-only enrollment option, so a replacement candidate
+  can respect a desktop from which the preceding shortcuts were removed.
+- Eight desktop integration regressions pass, including a deleted entry with
+  an original backup, dangling-symlink protection and enrollment without new
+  desktop copies. No installed runtime or desktop settings changed here.
+
 ## 2026-11-11 — Record native Mac evaluation and publish the combined trial source
 
 - The Mac UI owner opened actual native Calc, Writer and Impress windows using
