@@ -33,7 +33,7 @@ export default class Driver extends Extension {
         this.keyboard = seat.create_virtual_device(Clutter.InputDeviceType.KEYBOARD_DEVICE);
         this.plate = new St.Widget({width: 1440, height: 900, reactive: false});
         Main.layoutManager._backgroundGroup.add_child(this.plate);
-        this.Backdrop(true);
+        this.Backdrop(GLib.getenv('NORVI_OFFICE_INTERACTIVE_PREVIEW') !== '1');
         this.exported = Gio.DBusExportedObject.wrapJSObject(API, this);
         this.exported.export(Gio.DBus.session, '/dev/norvi/OfficeTest');
     }
@@ -142,6 +142,7 @@ export default class Driver extends Extension {
     }
 
     Backdrop(pattern) {
+        this.plate.visible = pattern || GLib.getenv('NORVI_OFFICE_INTERACTIVE_PREVIEW') !== '1';
         this.plate.set_style('background-color: #272727;');
         this.plate.destroy_all_children();
         if (pattern) {

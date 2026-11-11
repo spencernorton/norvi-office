@@ -45,6 +45,31 @@ new integration refuses to overwrite it. Saved documents are unaffected.
 
 ## Components and compatibility
 
+### Visible design preview
+
+The normal Office launcher currently enables the loading prompt and icon only.
+It does not display the experimental header, ribbon or glass. The separate
+visual-preview launcher opens the real LibreOffice controls in a private visible
+GNOME workspace, with a fresh document profile and fictional example document:
+
+```sh
+python3 norvi-office/experiments/preview/launch.py --app calc
+python3 norvi-office/experiments/preview/launch.py --app writer
+```
+
+Install clearly named **Office Preview — Calc** and **Office Preview — Writer**
+application entries with `python3 scripts/install_visual_preview.py`. Remove
+those entries with `norvi-office-preview-remove`; saved preview documents remain.
+
+It requires the installed Norvi Office package, the matching official Sifr
+package, GNOME Shell's Devkit and the user's existing Blur My Shell extension.
+The Calc preview includes the study's grouped ribbon, command artwork and labels,
+and hides the sidebar. Icons are derived locally from the installed official
+theme; they are not vendored in the release. The workspace follows the desktop's
+animation preference. Save and close documents using their own window controls
+before closing the outer preview workspace. Workspaces are retained under the
+user's state directory; they never replace the normal LibreOffice profile.
+
 The startup UI is the supported runtime in this initial release. The native
 header, glass boundary, ribbon adapter, optional document tools and warehouse
 model remain experimental. They are included for reproducible qualification,
