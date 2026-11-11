@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.1.0 — Initial release candidate
+## 1.0.0 — Initial release candidate
 
 - Approved Office icon and line-only startup presentation.
 - User shortcut integration with shared APT runtime, restore and removal fallback.
