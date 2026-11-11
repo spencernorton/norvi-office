@@ -276,7 +276,7 @@ export default class NorviOffice extends Extension {
             const file = Gio.File.new_for_path(GLib.build_filenamev([directory, name]));
             const stream = file.replace(null, false, Gio.FileCreateFlags.NONE, null);
             try {
-                await new Shell.Screenshot().screenshot_area(rect.x, rect.y, rect.width, rect.height, false, stream);
+                await new Shell.Screenshot().screenshot_area(rect.x, rect.y, rect.width, rect.height, stream);
             } finally {
                 stream.close(null);
             }
