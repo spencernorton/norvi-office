@@ -1,5 +1,23 @@
 # Journal
 
+## 2026-11-11 — Continue direct application source work during maintenance
+
+- Consolidated the direct-host branch, full suite shortcut migration, service
+  recovery and profile isolation. No desktop activity or installation occurs
+  while the existing maintenance hold remains in effect.
+- Native CI dependency resolution is repaired; the preceding preview branch
+  passed genuine source/native/tests checks. That result does not qualify this
+  newer combined source or the desktop compositor.
+- Tightened render qualification to prove named tab selection changes and sample
+  document opacity at the measured boundary. Static comparisons and geometry
+  polling still cannot prove per-buffer synchronization.
+- Documented current module/artwork coverage and the titlebar-only fallback.
+  The complete native UI, six-module desktop checks and archive rollout remain
+  unfinished. Preserve this distinction when resuming installed acceptance.
+- Local validation: twenty Python regressions pass, three Linux-only tests are
+  skipped; fourteen JavaScript policy checks, lint, compilation and diff checks
+  pass. Native build and actual desktop validation remain separate gates.
+
 ## 2026-11-11 — Bound unqualified desktop transparency
 
 - A synchronous geometry acknowledgment precedes the client buffer commit but

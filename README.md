@@ -53,6 +53,18 @@ real document paths/URLs from the normal suite shortcuts and file associations.
 A separate persistent Norvi profile retains its settings across launches;
 the original LibreOffice profile is preserved. The shared native command broker
 routes each header to its own frame when several documents or modules are open.
+The integration creates normal desktop and application-menu entries for Writer,
+Calc, Impress, Draw, Base, Math and the Office start center. When replacing a
+managed design preview, it retires only unchanged preview shortcuts. Open
+preview applications, their runtimes and documents are preserved. Uninstalling
+the native integration restores those preceding shortcuts.
+
+The current direct-host source limits translucency to the measured native
+titlebar. Dynamic ribbon translucency remains blocked on matching each mask to
+the actual committed application buffer; a synchronous geometry report alone
+does not prove that match. This source is not a completed suite redesign.
+See [desktop qualification](docs/desktop-qualification.md) for the module and
+acceptance gaps before installing a new candidate.
 
 After locally qualifying a candidate, install the user integration with
 `python3 scripts/install_native_desktop.py /path/to/candidate.deb`.
@@ -60,6 +72,7 @@ The new compositor extension requires a sign-out/sign-in on GNOME 50; its old
 reload API is disabled. Existing open work is never closed for activation.
 Restore the preceding launchers with `norvi-office-native-uninstall`; profiles
 and documents remain, and open applications can be closed normally.
+Restore the native integration before using an older preview removal command.
 This is an opt-in desktop qualification path, not automatic stable promotion.
 
 ### Visible design preview
