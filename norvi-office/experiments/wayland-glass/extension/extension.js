@@ -138,6 +138,8 @@ export default class NorviOffice extends Extension {
                 // Malformed or stale reports must not retain a translucent band.
             }
         }
+        if (this.nativeHost)
+            this.scan();
         this.syncAll();
     }
 
@@ -261,6 +263,11 @@ export default class NorviOffice extends Extension {
         const module = moduleFor(window);
         const surface = actor.get_first_child();
         if (!module || !surface || window.get_window_type() !== Meta.WindowType.NORMAL)
+            return;
+        // On the real desktop, touch only frames measured by the launch-scoped
+        // native-header bridge. Ordinary upstream Office windows stay intact.
+        if (this.nativeHost && !this.geometry.some(item => item.pid === window.get_pid() &&
+            item.title === window.get_title()))
             return;
 
         const blur = new St.Widget({reactive: false, name: 'norvi-office-backdrop'});
