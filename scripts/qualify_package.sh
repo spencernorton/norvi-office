@@ -9,7 +9,13 @@ export HOME="$(mktemp -d /tmp/office-home.XXXXXXXX)"
 export XDG_CONFIG_HOME="$HOME/.config" XDG_DATA_HOME="$HOME/.local/share" XDG_CACHE_HOME="$HOME/.cache"
 export XDG_RUNTIME_DIR="$(mktemp -d /tmp/office-runtime.XXXXXXXX)"
 export GIO_USE_VFS=local SAL_USE_VCLPLUGIN=gtk3 GDK_BACKEND=x11
-trap 'rm -rf -- "$payload" "$HOME" "$XDG_RUNTIME_DIR"' EXIT
+cleanup() {
+    if command -v fusermount3 >/dev/null && [ -d "$XDG_RUNTIME_DIR/doc" ]; then
+        fusermount3 -u "$XDG_RUNTIME_DIR/doc" 2>/dev/null || fusermount3 -uz "$XDG_RUNTIME_DIR/doc" 2>/dev/null || true
+    fi
+    rm -rf -- "$payload" "$HOME" "$XDG_RUNTIME_DIR"
+}
+trap cleanup EXIT
 dpkg-deb -x "${package[0]}" "$payload"
 # Root code and preexisting LibreOffice files are never part of this package.
 test ! -e "$payload/usr/lib/libreoffice"
