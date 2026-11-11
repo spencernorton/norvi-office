@@ -1,7 +1,6 @@
 #!/usr/bin/python3
 """Require a mapped host viewer with a connected private video stream."""
 import json
-import os
 from pathlib import Path
 import subprocess
 import sys
@@ -41,9 +40,12 @@ def observe_viewer(shell_pid):
                     continue
                 result = subprocess.run(["pw-dump"], capture_output=True, text=True, timeout=3, check=True)
                 if video_connected(json.loads(result.stdout), pid):
+                    parent_display = next((item.split(b"=", 1)[1].decode()
+                                           for item in process.joinpath("environ").read_bytes().split(b"\0")
+                                           if item.startswith(b"WAYLAND_DISPLAY=")), None)
                     return {"pid": pid, "title": window.get_name(), "mapped": True,
                             "video_stream": "active", "size": [rect.width, rect.height],
-                            "parent_display": os.environ.get("WAYLAND_DISPLAY")}
+                            "parent_display": parent_display}
         except (OSError, ValueError, GLib.Error, subprocess.SubprocessError):
             continue
     return None

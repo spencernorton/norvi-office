@@ -1,5 +1,18 @@
 # Journal
 
+## 2026-11-11 — Verify the outer desktop viewer
+
+- Corrected the previous acceptance gap: an inner compositor capture did not
+  prove that its outer desktop window was mapped or receiving video.
+- Start a private policy-only WirePlumber instance and use Devkit's sole
+  displayed monitor. Readiness now requires the matching host viewer and an
+  active video link, independently of the document's inner capture.
+- Install trusted, executable desktop icons as well as app-menu entries. The
+  removal manifest covers both and safely upgrades older four-file installs.
+- Nine Linux regressions and the Debian candidate build pass. Fresh Calc and
+  Writer launches have mapped outer windows with active streams; native header
+  Undo/Redo, menus and opaque work-area checks pass for both applications.
+
 ## 2026-11-11 — Qualify the visible application launchers
 
 - Installed distinct Calc/Writer preview entries and launched both through
