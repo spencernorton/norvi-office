@@ -12,6 +12,36 @@ import subprocess
 import tempfile
 
 UUID = "norvi-office-preview@norvi.local"
+APPS = ("calc", "writer", "impress", "draw", "base", "math", "startcenter")
+
+
+def preview_shortcuts(home, data, desktop):
+    """Retire only unchanged launcher files attributed to the legacy installer.
+
+    Keep the preview runtime, wrappers and manifest so saved work and provenance
+    survive and native rollback can restore the preceding launcher arrangement.
+    Unknown manifests or individually edited/foreign launchers are never adopted.
+    """
+    manifest = data / "norvi-office/visual-preview/shortcuts.json"
+    if manifest.is_symlink() or not manifest.is_file():
+        return []
+    try:
+        records = json.loads(manifest.read_text())["files"]
+        paths = [Path(record["path"]) for record in records]
+        shared = {home / ".local/bin/norvi-office-preview", home / ".local/bin/norvi-office-preview-remove",
+                  *(data / "applications" / f"norvi-office-preview-{app}.desktop" for app in ("calc", "writer"))}
+        complete = shared | {desktop / f"Office Preview - {app}.desktop" for app in ("calc", "writer")}
+        if len(paths) != len(set(paths)) or set(paths) not in (shared, complete):
+            return []
+        selected = []
+        for record, target in zip(records, paths):
+            if target.suffix != ".desktop" or target.is_symlink() or not target.is_file():
+                continue
+            if sha(target) == record["sha256"]:
+                selected.append(target)
+        return selected
+    except (OSError, ValueError, KeyError, TypeError):
+        return []
 
 
 def sha(path):
@@ -81,7 +111,7 @@ def install(candidate):
         state / "enabled.json": (json.dumps({"enabled": True, "package_sha256": package_hash}).encode() + b"\n", 0o600),
     }
     desktop_dir = Path(subprocess.check_output(["xdg-user-dir", "DESKTOP"], text=True).strip())
-    for app in ("calc", "writer", "impress", "draw", "base", "math", "startcenter"):
+    for app in APPS:
         target = data / "applications" / f"libreoffice-{app}.desktop"
         source = target if target.exists() else Path("/usr/share/applications") / target.name
         if not source.exists():
@@ -105,8 +135,9 @@ def install(candidate):
             lines.append(line)
         content = ("\n".join(lines) + "\n").encode()
         payloads[target] = (content, 0o644)
-        if app in ("calc", "writer", "impress") and desktop_dir != home:
-            payloads[desktop_dir / f"Office {app.title()}.desktop"] = (content, 0o755)
+        if desktop_dir.is_absolute() and desktop_dir != home:
+            name = "Office" if app == "startcenter" else f"Office {app.title()}"
+            payloads[desktop_dir / f"{name}.desktop"] = (content, 0o755)
     extension = root / "usr/share/norvi-office/experimental/wayland-glass/extension"
     destination = data / "gnome-shell/extensions" / UUID
     if destination.exists():
@@ -128,6 +159,7 @@ def install(candidate):
                 check = Path(directory) / target.name
                 check.write_bytes(content)
                 subprocess.run(["desktop-file-validate", str(check)], check=True)
+    retired = preview_shortcuts(home, data, desktop_dir)
     state.mkdir(parents=True, mode=0o700)
     (state / "backups").mkdir(mode=0o700)
     shutil.copy2(__file__, state / "integrate.py")
@@ -138,8 +170,14 @@ def install(candidate):
             backup = str(index)
             shutil.copy2(target, state / "backups" / backup)
         records.append({"path": str(target), "backup": backup, "sha256": hashlib.sha256(content).hexdigest()})
+    for target in retired:
+        backup = str(len(records))
+        shutil.copy2(target, state / "backups" / backup)
+        records.append({"path": str(target), "backup": backup, "sha256": sha(target),
+                        "removed": True, "desktop": target.parent == desktop_dir})
     manifest = {"runtime": str(root), "files": records, "original_profile": "untouched", "activation": "pending session restart"}
     (state / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
+    changed = set()
     try:
         for target, (content, mode) in payloads.items():
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -147,13 +185,23 @@ def install(candidate):
             temporary.write_bytes(content)
             temporary.chmod(mode)
             temporary.replace(target)
+            changed.add(target)
             if target.parent == desktop_dir and target.suffix == ".desktop":
                 subprocess.run(["gio", "set", str(target), "metadata::trusted", "true"], check=True)
+        for record in records:
+            if record.get("removed"):
+                target = Path(record["path"])
+                if target.is_symlink() or not target.is_file() or sha(target) != record["sha256"]:
+                    raise ValueError(f"A preview shortcut changed during installation: {target.name}")
+                target.unlink()
+                changed.add(target)
         activation(True)
         subprocess.run(["update-desktop-database", str(data / "applications")], check=True)
     except Exception:
         for record in records:
             target = Path(record["path"])
+            if target not in changed:
+                continue
             if record["backup"] is not None:
                 shutil.copy2(state / "backups" / record["backup"], target)
             elif target.is_file() and sha(target) == record["sha256"]:
@@ -171,7 +219,10 @@ def uninstall():
     manifest = json.loads((state / "manifest.json").read_text())
     for record in manifest["files"]:
         target = Path(record["path"])
-        if target.is_symlink() or not target.is_file() or sha(target) != record["sha256"]:
+        if record.get("removed"):
+            if target.exists() or target.is_symlink():
+                raise ValueError(f"A retired preview shortcut was replaced; preserved all files: {target.name}")
+        elif target.is_symlink() or not target.is_file() or sha(target) != record["sha256"]:
             raise ValueError(f"A managed file changed; preserved all files: {target.name}")
     subprocess.run(["gnome-extensions", "disable", UUID], check=False, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     activation(False)
@@ -179,6 +230,8 @@ def uninstall():
         target = Path(record["path"])
         if record["backup"] is not None:
             shutil.copy2(state / "backups" / record["backup"], target)
+            if record.get("desktop"):
+                subprocess.run(["gio", "set", str(target), "metadata::trusted", "true"], check=False)
         else:
             target.unlink()
     prune_empty(data / "gnome-shell/extensions" / UUID)

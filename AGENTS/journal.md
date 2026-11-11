@@ -1,5 +1,17 @@
 # Journal
 
+## 2026-11-11 — Migrate the complete desktop suite
+
+- Added direct desktop entries for all six editors and the suite start center.
+- Retire only unchanged, manifest-owned design-preview launchers; preserve
+  customized or foreign shortcuts, preview runtimes and every document/profile.
+- Native rollback restores the previous preview entries and refuses to replace
+  newly created files at their retired paths. Failed installs restore only
+  their completed mutations, preserving a concurrent preview-shortcut edit.
+- Six installer/routing regressions run on macOS using isolated command fixtures.
+  Actual desktop entry validation remains enabled wherever its Linux utility
+  is available; no host installation or glass acceptance is claimed.
+
 ## 2026-11-11 — Checkpoint before desktop activation
 
 - Actual host Calc/Writer header actions and duplicate-caption routing passed
