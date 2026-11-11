@@ -59,10 +59,13 @@ managed design preview, it retires only unchanged preview shortcuts. Open
 preview applications, their runtimes and documents are preserved. Uninstalling
 the native integration restores those preceding shortcuts.
 
-The current direct-host source limits translucency to the measured native
-titlebar. Dynamic ribbon translucency remains blocked on matching each mask to
-the actual committed application buffer; a synchronous geometry report alone
-does not prove that match. This source is not a completed suite redesign.
+The current direct-host source keeps application pixels opaque. Native
+compositor masking and experimental client alpha are disabled while matching
+layout boundaries to the actual painted pixels remains unproven. A synchronous
+geometry report or a full GTK redraw does not prove that match. This source is
+not a completed suite redesign. Shared artwork now covers the audited Home and
+Insert command sets in Calc, Writer and Impress; see
+[the source coverage receipt](docs/command-artwork.md).
 See [desktop qualification](docs/desktop-qualification.md) for the module and
 acceptance gaps before installing a new candidate.
 

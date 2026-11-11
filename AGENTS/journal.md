@@ -1,5 +1,20 @@
 # Journal
 
+## 2026-11-11 — Verify fresh Mac Calc mode and reconcile candidate coverage
+
+- A fresh light-profile native Calc launch opened grouped Home and exposed the
+  custom Formulas tab without manually changing interface mode. Evidence covers
+  initial mode and tab presence; selecting that tab in this check and automatic
+  modes in other modules remain unverified. The original three review windows
+  and the light comparison remain available, with the normal profile unchanged.
+- Reconciled qualification documentation with the 141-key source artwork audit
+  and disabled native alpha. Existing review profiles still use their preceding
+  artwork. Pure Cairo composition cannot establish the VCL paint association;
+  the exact Linux source build exposed and corrected the floor link dependency.
+- Combined Python validation passes twenty-six cases with three Linux-only
+  skips; lint, byte compilation and diff checks pass. Native package and actual
+  installed qualification remain separate requirements for this new head.
+
 ## 2026-11-11 — Disable client glass after cached-paint review
 
 - The GTK draw signal copies a cached VCL surface. Full GTK invalidation alone

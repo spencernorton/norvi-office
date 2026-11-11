@@ -8,7 +8,7 @@ launcher icon or source test alone does not satisfy that target.
 
 The direct launcher uses the existing GNOME session and a separate persistent
 suite profile. It launches no development viewer or nested compositor. The
-installer creates all seven desktop and application-menu entries, preserves
+installer creates all seven application-menu entries and optional desktop copies, preserves
 the original LibreOffice profile, and backs up replaced launchers. Only exact,
 unchanged, manifest-owned preview shortcuts are retired. Preview runtimes and
 documents remain available, including unsaved work in an open process.
@@ -24,14 +24,15 @@ headless initialization and disposable qualification processes.
 
 | Application | Interface coverage in source | Current candidate on the real desktop |
 | --- | --- | --- |
-| Calc | Custom grouped ribbon and shared Home command artwork | Pending |
-| Writer | Shared Home command artwork; native Writer layout | Pending |
-| Impress | Shared native header; upstream module controls/artwork | Pending |
+| Calc | Custom grouped ribbon; audited Home/Insert/Formulas artwork | Pending |
+| Writer | Audited Home/Insert artwork; native Writer layout | Pending |
+| Impress | Audited Home/Insert artwork; native Impress layout | Pending |
 | Draw | Shared native header; upstream module controls/artwork | Pending |
 | Base | Shared native header; upstream module controls/artwork | Pending |
 | Math | Shared native header; upstream module controls/artwork | Pending |
 | Office start center | Direct suite launcher and desktop entry | Pending |
 
+The [artwork receipt](command-artwork.md) records exact source command coverage.
 Unmatched command icons still come from the official Sifr theme. All-tabs icon
 coverage and complete module-specific design parity remain outstanding.
 Optional document tools and data-model components remain separately scoped
@@ -44,20 +45,28 @@ new Wayland buffer. Updating the compositor mask before acknowledging that repor
 can apply the larger boundary to the preceding buffer. Document pixels can then
 fall inside the transparency mask for a compositor frame.
 
-Until a mask can be associated with its committed buffer, the direct-host source
-restricts translucency to the measured native titlebar and leaves the ribbon
-opaque. This is a partial visual fallback. It must not be described as seamless
-ribbon glass or a fix for the complete tab-transition behavior.
+The direct-host source now attaches no native compositor alpha mask and keeps
+experimental client alpha disabled, including when its old environment opt-in
+is present. Application pixels remain opaque. Neither path may be described as
+seamless ribbon glass or a fix for the complete tab-transition behavior.
+
+The client composition experiment exposed a second timing boundary: the exact
+LibreOffice GTK backend can copy a cached VCL surface during GTK drawing. A full
+GTK invalidation does not establish that current accessibility geometry belongs
+to those cached pixels. Rejecting a reused alpha buffer also does not restore
+its preceding pixels. The standalone Cairo regression records that failure;
+[the investigation](../norvi-office/experiments/native-header/client-glass.md)
+separates pure pixel behavior from the unproven application paint association.
 
 Earlier state polling and static backdrop comparisons did not prove frame-level
 opacity at a changing ribbon edge. The render qualifier now verifies actual
 named notebook-tab selections and samples the static document region starting
 at the measured boundary. It still cannot establish atomic buffer association.
-Its full-ribbon acceptance remains unsatisfied by the titlebar-only fallback.
+Its full-ribbon acceptance remains unsatisfied by the opaque fallback.
 
 ## Evidence required before rollout
 
-After the desktop maintenance hold is cleared:
+For the next candidate's installed qualification:
 
 1. Build and qualify the exact committed candidate through native CI. Retain the
    candidate digest and distinguish source checks from installed runtime checks.
@@ -89,7 +98,12 @@ Manual evaluation has opened Calc, Writer and Impress as actual Mac windows.
 The grouped Calc Home and Formulas controls, shared command artwork, editable
 fictional documents and native Calc/Writer Undo/Redo were exercised. The trial
 uses its own profile; the normal profile and signed official application are
-preserved. These observations cover the manually selected Tabbed mode in the
-running trial. The newer preset's automatic first-use mode selection still
-needs a fresh profile GUI check. They do not qualify other modules, full design
-parity, Linux glass or a signed archive release.
+preserved. The original running trial used manually selected Tabbed mode. A
+second, fresh light-profile Calc launch then opened the grouped Home ribbon and
+custom Formulas tab automatically, without that manual change. That check
+establishes Calc's initial mode and tab presence; it does not establish automatic
+mode selection for the other modules or selection of the new Formulas tab in
+that fresh session. The observations do not qualify full design parity, Linux
+glass or a signed archive release. Existing review profiles retain their earlier
+artwork until closed and deliberately replaced; newer source coverage does not
+describe the pixels already running in those windows.
