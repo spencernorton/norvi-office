@@ -45,6 +45,7 @@ static GtkWidget *study_icon(guint index) {
 
 static GSettings *popup_settings, *interface_settings, *contrast_settings;
 static const char *token;
+static const char *broker_name;
 
 static Header *header_ref(Header *header) {
     g_atomic_int_inc(&header->refs);
@@ -144,7 +145,7 @@ static void clicked(GtkButton *button, gpointer data) {
     Request *request = request_new(header);
     header->activating = TRUE;
     disable_actions(header);
-    g_dbus_connection_call(header->bus, "dev.norvi.OfficeHeader", "/dev/norvi/OfficeHeader",
+    g_dbus_connection_call(header->bus, broker_name, "/dev/norvi/OfficeHeader",
         "dev.norvi.OfficeHeader", "Activate",
         g_variant_new("(utsss)", (guint)getpid(), window_handle(header), header->identity, command, token),
         G_VARIANT_TYPE("(b)"), G_DBUS_CALL_FLAGS_NO_AUTO_START, 30000,
@@ -294,7 +295,7 @@ static gboolean refresh(gpointer data) {
         return G_SOURCE_CONTINUE;
     header->describing = TRUE;
     Request *request = request_new(header);
-    g_dbus_connection_call(header->bus, "dev.norvi.OfficeHeader", "/dev/norvi/OfficeHeader",
+    g_dbus_connection_call(header->bus, broker_name, "/dev/norvi/OfficeHeader",
         "dev.norvi.OfficeHeader", "Describe",
         g_variant_new("(utss)", (guint)getpid(), window_handle(header), header->identity, token),
         G_VARIANT_TYPE("(a{sb})"),
@@ -465,13 +466,22 @@ G_MODULE_EXPORT void gtk_module_init(gint *argc, gchar ***argv) {
     (void)argc;
     (void)argv;
     const char *root = g_getenv("NORVI_OFFICE_TEST_DIR");
+    const char *session = g_getenv("NORVI_OFFICE_SESSION_DIR");
     token = g_getenv("NORVI_OFFICE_HEADER_TOKEN");
-    if (!root || !token || strlen(token) < 32)
+    if ((!root && !session) || !token || strlen(token) < 32)
         return;
-    gchar *config = g_build_filename(root, "config", NULL);
-    gboolean isolated = g_strcmp0(config, g_getenv("XDG_CONFIG_HOME")) == 0;
+    gchar *config = root ? g_build_filename(root, "config", NULL) : NULL;
+    gboolean isolated = root && g_strcmp0(config, g_getenv("XDG_CONFIG_HOME")) == 0;
     g_free(config);
-    if (!isolated)
+    gchar *marker = session ? g_build_filename(session, "native-session.json", NULL) : NULL;
+    gboolean desktop = marker && g_file_test(marker, G_FILE_TEST_IS_REGULAR);
+    g_free(marker);
+    if (!isolated && !desktop)
+        return;
+    broker_name = g_getenv("NORVI_OFFICE_HEADER_BUS");
+    if (!broker_name)
+        broker_name = "dev.norvi.OfficeHeader";
+    if (!g_dbus_is_name(broker_name) || broker_name[0] == ':')
         return;
     interface_settings = g_settings_new("org.gnome.desktop.interface");
     contrast_settings = g_settings_new("org.gnome.desktop.a11y.interface");

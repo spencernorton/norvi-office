@@ -104,7 +104,7 @@ class PreviewTests(unittest.TestCase):
 
     def test_ribbon_uses_official_installed_icons_without_vendored_zip(self):
         fixture = SimpleNamespace(connect=None, prop=None, stop_office=None)
-        with patch.dict(sys.modules, {"fixtures": fixture}):
+        with patch.dict(sys.modules, {"uno_utils": fixture}):
             ribbon = load("preview_ribbon", EXPERIMENTS / "native-header/calc_ribbon.py")
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

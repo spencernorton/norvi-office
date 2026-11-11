@@ -55,6 +55,8 @@ def report():
                 if not item:
                     continue
                 bars = header_bars(frame)
+                if os.environ.get("NORVI_OFFICE_SESSION_DIR") and len(bars) != 1:
+                    continue
                 box = geometry.rectangle(bars[0]) if len(bars) == 1 else None
                 if box:
                     # Use GTK's actual header allocation: VCL's root-pane top
@@ -77,7 +79,7 @@ def report():
 
 
 if __name__ == "__main__":
-    if not os.environ.get("NORVI_OFFICE_TEST_DIR"):
+    if not (os.environ.get("NORVI_OFFICE_TEST_DIR") or os.environ.get("NORVI_OFFICE_SESSION_DIR")):
         sys.exit("Run the isolated native header harness.")
     Atspi.set_timeout(100, 100)
     listener = Atspi.EventListener.new(layout_changed)

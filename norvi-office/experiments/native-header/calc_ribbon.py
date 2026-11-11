@@ -7,7 +7,7 @@ import subprocess
 import xml.etree.ElementTree as ET
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from fixtures import connect, prop, stop_office
+from uno_utils import connect, prop, stop_office
 
 SOURCE = Path("/usr/lib/libreoffice/share/config/soffice.cfg/modules/scalc/ui/notebookbar.ui")
 SOURCE_HASH = "95663027bb4325d46522b19259fe47fc85b837b6f92558f6568942b58d535804"
@@ -326,16 +326,18 @@ def build_home(tree, dark):
         home.append(item)
 
 
-def prepare(profile):
+def prepare(profile, native=False, environment=None):
     root = Path.cwd().resolve()
-    if profile.resolve() != root / "profile-calc" or not root.name.startswith("capture."):
+    environment = os.environ if environment is None else environment
+    permitted = root.name.startswith("capture.") or (native and environment.get("NORVI_OFFICE_SESSION_DIR") == str(root))
+    if profile.resolve() != root / "profile-calc" or not permitted:
         raise ValueError("The ribbon preview requires a fresh capture profile")
     source = SOURCE.read_bytes()
     if sha256(source).hexdigest() != SOURCE_HASH:
         raise ValueError("Unsupported Calc ribbon input")
     tree = ET.ElementTree(ET.fromstring(source, parser=ET.XMLParser(
         target=ET.TreeBuilder(insert_comments=True))))
-    build_home(tree, "dark" in os.environ.get("GTK_THEME", ""))
+    build_home(tree, "dark" in environment.get("GTK_THEME", ""))
     add_formulas_tab(tree)
     extension_label = tree.find(".//object[@id='ExtensionLabel']/property[@name='label']")
     extension_label.attrib = {"name": "label"}
@@ -351,7 +353,7 @@ def prepare(profile):
         office = subprocess.Popen([
             "soffice", "-env:UserInstallation=" + profile.as_uri(), "--headless", "--norestore",
             f"--accept=pipe,name={pipe};urp;",
-        ], stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        ], env=environment, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         try:
             context = connect(pipe)
             supplier = context.getValueByName("/singletons/com.sun.star.ui.theModuleUIConfigurationManagerSupplier")

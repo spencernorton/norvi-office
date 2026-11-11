@@ -1,5 +1,17 @@
 # Journal
 
+## 2026-11-11 — Prepare actual desktop integration
+
+- The user rejected the nested Devkit delivery and reported persistent visual
+  faults. Added an explicit direct-host launch path with a separate persistent
+  suite profile, real document arguments and one shared command broker.
+- Added transactional user shortcut integration, a dedicated compositor UUID,
+  backups and restoration. The existing LibreOffice profile is not overwritten.
+- GNOME 50's extension reload API reports NOT_SUPPORTED. New compositor code
+  needs a fresh login; activation must preserve open work and cannot be claimed
+  complete based on nested previews or source checks.
+- Native candidate, rollback and actual host acceptance follow before rollout.
+
 ## 2026-11-11 — Reduce tab flashes and complete Home artwork
 
 - Replaced the fixed input hold with event-driven chrome measurements. Native
