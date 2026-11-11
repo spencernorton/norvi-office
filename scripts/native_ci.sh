@@ -1,6 +1,9 @@
 #!/bin/bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# These are generated candidate outputs, never release truth.
+rm -f out/candidate/norvi-office_*.deb out/candidate/SHA256SUMS.txt
+rm -f out/reproduction/norvi-office_*.deb out/reproduction/SHA256SUMS.txt
 scripts/check.sh
 bash norvi-office/experiments/native-header/build.sh /tmp/norvi-office-tests/ci-build
 python3 -m unittest discover -s norvi-office/experiments/wayland-glass -p test_geometry.py -v
