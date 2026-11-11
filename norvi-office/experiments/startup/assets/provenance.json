@@ -1,0 +1,15 @@
+{
+  "generator": "GE image generation API",
+  "model": "qwen21",
+  "seed": 15411110,
+  "size": [
+    1024,
+    1024
+  ],
+  "job_id": "0dd29d9a55d146f78848d0d1e1c3c43e",
+  "sha256": "d21d2766c085bf0c6d6c6404f0727d188a7bd42e85df001fc16ecdda27e5f496",
+  "prompt": "Create one polished desktop application icon for Norvi Office, a professional document and spreadsheet suite. A single sculptural hollow rounded-rectangle emblem, like an upright open O constructed from a thick folded sheet of frosted lavender glass. One precise folded upper-right facet subtly evokes a document corner. Bold simple silhouette with broad surfaces and a generous clear center, readable at 32 pixels. Front-facing with very slight dimensional depth. Restrained satin translucency, delicate off-white edge highlights, clean beveled planes, meticulously aligned geometry. Use lavender #b49af4 and pale off-white #f2eff8 only for the emblem, with deep muted purple in its folded facets. Place it centered on a completely uniform matte charcoal #272727 background. The emblem occupies 74 percent of the square with even margins. Premium contemporary productivity software branding, calm and precise, consistent with a charcoal and lavender glass desktop theme. Icon asset only, square composition, crisp smooth edges. No text, wordmark, captions, dots, loading indicator, Microsoft branding, multicolor tiles, extra objects, decorative backdrop or mockup.",
+  "negative_prompt": "text, words, captions, watermark, blurry, busy detail, multiple icons, multicolor, orange, green, blue, checkerboard, scenery, frame, mockup, lens flare",
+  "original_sha256": "893c80a1771811c717b1d24b9d373f391086ddada99fb459f81324c03046c724",
+  "release_preparation": "Removed ancillary PNG metadata; IDAT image bytes preserved exactly"
+}

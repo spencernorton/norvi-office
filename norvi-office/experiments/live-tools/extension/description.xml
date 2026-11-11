@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<description xmlns="http://openoffice.org/extensions/description/2006">
+  <identifier value="dev.norvi.OfficeLiveTools"/>
+  <version value="0.1.0"/>
+  <display-name><name lang="en">Norvi Document Tools</name></display-name>
+</description>

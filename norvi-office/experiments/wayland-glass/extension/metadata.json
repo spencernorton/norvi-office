@@ -1,0 +1,7 @@
+{
+  "uuid": "norvi-office-preview@norvi.local",
+  "name": "Norvi Office Glass Preview",
+  "description": "Experimental LibreOffice ribbon and popup blur for GNOME Shell.",
+  "shell-version": ["50"],
+  "version": 1
+}

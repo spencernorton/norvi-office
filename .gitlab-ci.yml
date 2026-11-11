@@ -1,0 +1,31 @@
+# Private preparation lane. Public release bytes are produced by release.yml.
+stages: [qualify]
+native_candidate:
+  interruptible: true
+  stage: qualify
+  image: ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
+  tags: [amd64-builder]
+  timeout: 30 minutes
+  variables:
+    DEBIAN_FRONTEND: noninteractive
+    GIO_USE_VFS: local
+  script:
+    - apt-get update -qq
+    - >-
+      apt-get install -y -qq --no-install-recommends git ca-certificates build-essential pkg-config fakeroot
+      libgtk-3-dev python3 python3-gi python3-gi-cairo python3-cairo python3-pil python3-uno
+      gir1.2-gtk-3.0 gir1.2-atspi-2.0 at-spi2-core desktop-file-utils xvfb xauth dbus dbus-x11
+      libreoffice-writer libreoffice-calc libreoffice-impress libreoffice-draw libreoffice-base
+      libreoffice-math libreoffice-gtk3 libreoffice-style-sifr default-jre-headless
+    - useradd --create-home office-test
+    - chown -R office-test "$CI_PROJECT_DIR"
+    - runuser -u office-test -- bash scripts/native_ci.sh
+
+  artifacts:
+    when: always
+    expire_in: 14 days
+    paths:
+      - out/candidate/
+      - out/installed-runtime.log
+      - out/upstream.json
+      - out/format-contract.log

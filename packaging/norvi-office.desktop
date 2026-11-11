@@ -1,0 +1,36 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Office
+GenericName=Office Suite
+Comment=Documents, spreadsheets and presentations
+Icon=norvi-office
+Exec=/usr/bin/norvi-office --desktop --app startcenter %U
+Terminal=false
+StartupNotify=true
+Categories=Office;
+Actions=Writer;Calc;Impress;Draw;Base;Math;
+
+[Desktop Action Writer]
+Name=Writer
+Exec=/usr/bin/norvi-office --desktop --app writer
+
+[Desktop Action Calc]
+Name=Calc
+Exec=/usr/bin/norvi-office --desktop --app calc
+
+[Desktop Action Impress]
+Name=Impress
+Exec=/usr/bin/norvi-office --desktop --app impress
+
+[Desktop Action Draw]
+Name=Draw
+Exec=/usr/bin/norvi-office --desktop --app draw
+
+[Desktop Action Base]
+Name=Base
+Exec=/usr/bin/norvi-office --desktop --app base
+
+[Desktop Action Math]
+Name=Math
+Exec=/usr/bin/norvi-office --desktop --app math

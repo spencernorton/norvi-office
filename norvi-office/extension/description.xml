@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<description xmlns="http://openoffice.org/extensions/description/2006" xmlns:d="http://openoffice.org/extensions/description/2006" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <identifier value="dev.norvi.NorviGlass"/>
+    <version value="0.2.0"/>
+    <display-name>
+        <name lang="en">Norvi Glass — LibreOffice UI preset</name>
+    </display-name>
+    <publisher>
+        <name lang="en">Norvi</name>
+    </publisher>
+    <extension-description>
+        <desc lang="en">Applies the NorviOS glass design tokens to LibreOffice:
+        Tabbed Compact notebookbar, Sifr Dark (SVG) icons with a selectable light variant, follow-system
+        appearance, first-run cruft suppressed. Configuration data only —
+        ships no code, patches no upstream file. Everything set here remains a
+        user-overridable default in Tools → Options.</desc>
+    </extension-description>
+</description>

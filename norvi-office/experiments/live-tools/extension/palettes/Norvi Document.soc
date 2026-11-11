@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ooo:color-table xmlns:draw="urn:oasis:names:tc:opendocument:xmlns:drawing:1.0"
+                 xmlns:ooo="http://openoffice.org/2004/office">
+  <draw:color draw:name="Paper" draw:color="#FFFFFF"/>
+  <draw:color draw:name="Quiet fill" draw:color="#F4F2FC"/>
+  <draw:color draw:name="Table fill" draw:color="#EEECFA"/>
+  <draw:color draw:name="Emphasis fill" draw:color="#E6E2F7"/>
+  <draw:color draw:name="Accent" draw:color="#7460D4"/>
+  <draw:color draw:name="Accent text" draw:color="#514294"/>
+  <draw:color draw:name="Ink" draw:color="#272727"/>
+</ooo:color-table>
