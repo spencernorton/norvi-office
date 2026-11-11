@@ -40,7 +40,9 @@ def qualified():
 
 
 def command(app, files, profile=None, pipe=None):
-    args = ["soffice", "--nologo", "--norestore"]
+    # Interactive applications retain normal crash recovery. --norestore belongs
+    # only to disposable/headless initialization and qualification processes.
+    args = ["soffice", "--nologo"]
     if profile:
         args.append("-env:UserInstallation=" + profile.as_uri())
     if pipe:

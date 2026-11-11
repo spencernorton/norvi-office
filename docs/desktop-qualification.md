@@ -17,6 +17,10 @@ New runtime service names are derived from the profile. Before document commands
 run, the connected UNO service must report that same profile. Reopening a running
 suite must also restore its owned helper services rather than starting duplicate
 Office processes or leaving native controls disconnected.
+Interactive launch arguments preserve normal crash recovery. LibreOffice's
+[`--norestore` option](https://help.libreoffice.org/latest/en-US/text/shared/guide/start_parameters.html)
+disables restart and file recovery after a crash, so it is restricted to
+headless initialization and disposable qualification processes.
 
 | Application | Interface coverage in source | Current candidate on the real desktop |
 | --- | --- | --- |

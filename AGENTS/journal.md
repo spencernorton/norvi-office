@@ -1,5 +1,13 @@
 # Journal
 
+## 2026-11-11 — Preserve interactive document recovery
+
+- Removed the disposable-preview no-recovery flag from actual application
+  commands. Normal crash recovery remains available in the persistent suite
+  profile; headless initialization retains its separate controlled arguments.
+- The real-document launch regression now rejects recovery suppression. This
+  source-only correction changes no running application or installed payload.
+
 ## 2026-11-11 — Continue direct application source work during maintenance
 
 - Consolidated the direct-host branch, full suite shortcut migration, service

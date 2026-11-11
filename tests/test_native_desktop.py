@@ -43,6 +43,7 @@ class NativeDesktopTests(unittest.TestCase):
         self.assertIn("-env:UserInstallation=file:///tmp/persistent%20office%20profile", args)
         self.assertIn("--calc", args)
         self.assertNotIn("--headless", args)
+        self.assertNotIn("--norestore", args)
         self.assertNotIn("gnome-shell", args)
         self.assertFalse(any("Ember" in arg or "devkit" in arg for arg in args))
         self.assertNotEqual(runtime.service_pipe(Path("/tmp/profile-one")), runtime.service_pipe(Path("/tmp/profile-two")))
