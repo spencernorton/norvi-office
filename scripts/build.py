@@ -15,10 +15,23 @@ import zipfile
 ROOT = Path(__file__).resolve().parent.parent
 
 
+def source_files(source):
+    prefix = source.relative_to(ROOT).as_posix() + "/"
+    names = subprocess.check_output(["git", "ls-files", "-z"], cwd=ROOT).decode().split("\0")
+    return [ROOT / name for name in names if name.startswith(prefix)]
+
+
+def copy_source(source, destination):
+    for path in source_files(source):
+        target = destination / path.relative_to(source)
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(path, target)
+
+
 def extension(source, destination, epoch):
     stamp = datetime.fromtimestamp(max(epoch, 315532800), timezone.utc).timetuple()[:6]
     with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_STORED) as archive:
-        for path in sorted(source.rglob("*")):
+        for path in sorted(source_files(source)):
             if path.is_file():
                 info = zipfile.ZipInfo(path.relative_to(source).as_posix(), stamp)
                 info.external_attr = 0o100644 << 16
@@ -27,6 +40,9 @@ def extension(source, destination, epoch):
 
 
 def build(output):
+    dirty = subprocess.check_output(["git", "status", "--porcelain", "--untracked-files=all"], cwd=ROOT)
+    if dirty:
+        raise ValueError("Build from a clean committed source tree")
     version = (ROOT / "VERSION").read_text().strip()
     if not re.fullmatch(r"(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)", version):
         raise ValueError("VERSION must be a stable semantic version")
@@ -42,11 +58,11 @@ def build(output):
         share = stage / "usr/share/norvi-office"
         share.mkdir(parents=True)
         source = ROOT / "norvi-office"
-        shutil.copytree(source / "experiments/startup", share / "startup", ignore=shutil.ignore_patterns("__pycache__"))
+        copy_source(source / "experiments/startup", share / "startup")
         (share / "startup/package-mode").write_text("Shared runtime managed by APT\n")
         experimental = share / "experimental"
         for name in ("native-header", "wayland-glass", "live-tools", "data-model"):
-            shutil.copytree(source / "experiments" / name, experimental / name, ignore=shutil.ignore_patterns("__pycache__"))
+            copy_source(source / "experiments" / name, experimental / name)
         modules = stage / "usr/lib/x86_64-linux-gnu/norvi-office"
         modules.mkdir(parents=True)
         flags = subprocess.check_output(["pkg-config", "--cflags", "--libs", "gtk+-3.0", "gmodule-2.0"], text=True).split()
@@ -74,7 +90,7 @@ def build(output):
         docs = stage / "usr/share/doc/norvi-office"
         docs.mkdir(parents=True)
         shutil.copy2(ROOT / "LICENSE", docs / "copyright")
-        shutil.copytree(ROOT / "docs", docs / "guides")
+        copy_source(ROOT / "docs", docs / "guides")
         control = stage / "DEBIAN"
         control.mkdir()
         (control / "control").write_text((ROOT / "packaging/control").read_text().replace("@VERSION@", version))
