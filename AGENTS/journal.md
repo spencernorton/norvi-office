@@ -1,5 +1,15 @@
 # Journal
 
+## 2026-11-11 — Isolate native CI dependency resolution
+
+- Give the disposable native job explicit DNS resolvers after repeated archive
+  lookups failed before source checkout. Official signed package sources and
+  the digest-pinned runtime image remain unchanged.
+- Retry transient APT transport errors and fail dependency setup if any index
+  refresh fails, rather than continuing with an empty package index.
+- Source validation passes locally. The exact-head native candidate acceptance
+  must pass in Actions before this change can be merged or released.
+
 ## 2026-11-11 — Migrate the complete desktop suite
 
 - Added direct desktop entries for all six editors and the suite start center.
