@@ -28,7 +28,13 @@ for attempt in $(seq 1 50); do
     kill -0 "$pipewire_pid"
     sleep 0.1
 done
-gnome-shell --wayland --devkit --virtual-monitor=1440x900 --wayland-display=norvi-office-test --no-x11 >shell.log 2>&1 &
+# The policy-only instance links the private screen stream to its viewer. It
+# never starts hardware audio, Bluetooth or camera monitors.
+wireplumber --profile=policy >wireplumber.log 2>&1 &
+policy=$!
+# Devkit creates the visible monitor itself. A separate --virtual-monitor
+# would put Office on an additional screen that the user cannot see.
+gnome-shell --wayland --devkit --wayland-display=norvi-office-test --no-x11 >shell.log 2>&1 &
 shell=$!
 office=
 broker=
@@ -38,7 +44,7 @@ cleanup() {
         if [[ -n "$pid" ]]; then kill "$pid" 2>/dev/null || true; fi
     done
     if [[ -n "$office" ]]; then kill -- "-$office" 2>/dev/null || true; fi
-    kill "$shell" "$pipewire_pid" 2>/dev/null || true
+    kill "$shell" "$policy" "$pipewire_pid" 2>/dev/null || true
 }
 trap cleanup EXIT
 request() {
@@ -50,6 +56,7 @@ for attempt in $(seq 1 150); do
     kill -0 "$shell"
     sleep 0.2
 done
+/usr/bin/python3 "$root/../preview/visible.py" "$shell" >visible.json
 export WAYLAND_DISPLAY=norvi-office-test GDK_BACKEND=wayland SAL_USE_VCLPLUGIN=gtk3
 export GTK_THEME=Yaru-purple-dark GDK_SCALE=1 GDK_DPI_SCALE=1
 /usr/bin/python3 "$root/../preview/prepare.py"
@@ -73,6 +80,6 @@ request Place >placement.txt
 request WindowState maximized >window-state.txt
 sleep 1
 request Capture preview-ready.png >capture.txt
-printf '{"shell_pid":%s,"office_group":%s,"broker_pid":%s,"geometry_pid":%s,"pipe":"%s"}\n' \
-    "$shell" "$office" "$broker" "$geometry" "$pipe" >ready.json
+printf '{"shell_pid":%s,"office_group":%s,"broker_pid":%s,"geometry_pid":%s,"pipe":"%s","viewer":%s}\n' \
+    "$shell" "$office" "$broker" "$geometry" "$pipe" "$(cat visible.json)" >ready.json
 wait "$shell"

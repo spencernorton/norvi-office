@@ -1,5 +1,6 @@
 import importlib.util
 from io import BytesIO
+import json
 import os
 from pathlib import Path
 import shutil
@@ -37,8 +38,14 @@ class PreviewTests(unittest.TestCase):
             document = home / "retained-preview-document.ods"
             document.write_bytes(b"user work")
             manifest = data / "norvi-office/visual-preview/shortcuts.json"
-            with patch.object(installer, "locations", return_value=(home, data, manifest)):
+            desktop = home / "Desktop"
+            with patch.object(installer, "locations", return_value=(home, data, desktop, manifest)), \
+                    patch.object(installer, "trust_desktop") as trust:
                 installer.install()
+                self.assertEqual(trust.call_count, 2)
+                desktop_calc = desktop / "Office Preview - calc.desktop"
+                self.assertEqual(desktop_calc.stat().st_mode & 0o777, 0o755)
+                self.assertIn("Name=Office Preview — Calc", desktop_calc.read_text())
                 preview = applications / "norvi-office-preview-calc.desktop"
                 original = preview.read_text()
                 preview.write_text(original + "# user edit\n")
@@ -50,7 +57,50 @@ class PreviewTests(unittest.TestCase):
             self.assertEqual(normal.read_text(), original_office)
             self.assertEqual(document.read_bytes(), b"user work")
             self.assertFalse(preview.exists())
+            self.assertFalse(desktop_calc.exists())
             self.assertFalse((home / ".local/bin/norvi-office-preview").exists())
+
+    @unittest.skipUnless(shutil.which("desktop-file-validate"), "Linux desktop validation required")
+    def test_legacy_install_adopts_matching_desktop_copy_but_preserves_foreign_copy(self):
+        installer = load("preview_installer_upgrade", ROOT / "scripts/install_visual_preview.py")
+        for foreign in (False, True):
+            with self.subTest(foreign=foreign), tempfile.TemporaryDirectory() as temporary:
+                home = Path(temporary)
+                data, desktop = home / "share", home / "Desktop"
+                manifest = data / "norvi-office/visual-preview/shortcuts.json"
+                with patch.object(installer, "locations", return_value=(home, data, desktop, manifest)), \
+                        patch.object(installer, "trust_desktop"):
+                    installer.install()
+                    record = json.loads(manifest.read_text())
+                    record["files"] = [r for r in record["files"] if Path(r["path"]).parent != desktop]
+                    manifest.write_text(json.dumps(record))
+                    copy = desktop / "Office Preview - calc.desktop"
+                    if foreign:
+                        copy.write_text("user's launcher")
+                        with self.assertRaises(ValueError):
+                            installer.install()
+                        self.assertEqual(copy.read_text(), "user's launcher")
+                        self.assertEqual(len(json.loads(manifest.read_text())["files"]), 4)
+                    else:
+                        installer.install()
+                        self.assertEqual(len(json.loads(manifest.read_text())["files"]), 6)
+                        installer.uninstall()
+                        self.assertFalse(copy.exists())
+
+    def test_visible_viewer_requires_its_own_running_linked_video_stream(self):
+        visible = load("preview_visible", EXPERIMENTS / "preview/visible.py")
+        objects = [
+            {"id": 35, "type": "PipeWire:Interface:Client",
+             "info": {"props": {"application.process.id": 123}}},
+            {"id": 39, "type": "PipeWire:Interface:Node",
+             "info": {"props": {"client.id": 35, "media.class": "Stream/Input/Video"}, "state": "running"}},
+            {"id": 56, "type": "PipeWire:Interface:Link", "info": {"state": "active", "input-node-id": 39}},
+        ]
+        self.assertTrue(visible.video_connected(objects, 123))
+        self.assertFalse(visible.video_connected(objects, 456))
+        self.assertFalse(visible.video_connected(objects[:2], 123))
+        objects[1]["info"]["state"] = "suspended"
+        self.assertFalse(visible.video_connected(objects, 123))
 
     def test_ribbon_uses_official_installed_icons_without_vendored_zip(self):
         fixture = SimpleNamespace(connect=None, prop=None, stop_office=None)

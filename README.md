@@ -58,11 +58,14 @@ python3 norvi-office/experiments/preview/launch.py --app writer
 ```
 
 Install clearly named **Office Preview — Calc** and **Office Preview — Writer**
-application entries with `python3 scripts/install_visual_preview.py`. Remove
+desktop icons and application entries with `python3 scripts/install_visual_preview.py`. Remove
 those entries with `norvi-office-preview-remove`; saved preview documents remain.
 
 It requires the installed Norvi Office package, the matching official Sifr
-package, GNOME Shell's Devkit and the user's existing Blur My Shell extension.
+package, GNOME Shell's Devkit, PipeWire, WirePlumber and the user's existing Blur My Shell extension.
+The preview uses its own video policy manager, without opening hardware audio,
+Bluetooth or camera monitors. Launch readiness requires the outer desktop viewer
+to be mapped with an active video stream; an inner screenshot alone does not pass.
 The Calc preview includes the study's grouped ribbon, command artwork and labels,
 and hides the sidebar. Icons are derived locally from the installed official
 theme; they are not vendored in the release. The workspace follows the desktop's

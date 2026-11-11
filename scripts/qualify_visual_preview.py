@@ -49,6 +49,10 @@ def descend(node, depth=0):
 
 
 record = json.loads((directory / "ready.json").read_text())
+sys.path.insert(0, str(source.parent / "preview"))
+from visible import observe_viewer  # noqa: E402
+viewer = observe_viewer(record["shell_pid"])
+assert viewer and viewer["pid"] == record["viewer"]["pid"], "The host viewer is not mapped and streaming"
 context = connect(record["pipe"])
 desktop = context.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", context)
 doc = desktop.getCurrentComponent()
@@ -127,6 +131,7 @@ for name, box in (("header", header), ("body", body)):
 assert differences["header"] > 1000, differences
 assert differences["body"] == 0, differences
 receipt = {"app": app, "header_controls": "passed", "undo_redo": "passed", "f10_menu": "passed",
+           "host_viewer": viewer,
            "glass": state, "backdrop_changed_pixels": differences,
            "sampled_opaque_pixels": (body[2] - body[0]) * (body[3] - body[1])}
 (directory / "acceptance.json").write_text(json.dumps(receipt, indent=2) + "\n")
