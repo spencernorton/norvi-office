@@ -165,4 +165,5 @@ receipt = {"app": app, "header_controls": "passed", "undo_redo": "passed", "f10_
            "glass": state, "backdrop_changed_pixels": differences,
            "sampled_opaque_pixels": (body[2] - body[0]) * (body[3] - body[1])}
 (directory / "acceptance.json").write_text(json.dumps(receipt, indent=2) + "\n")
-print(json.dumps(receipt))
+print(json.dumps({key: value for key, value in receipt.items() if key != "tab_transitions"} |
+                 {"tab_recovery_ms": [tab["ribbon_recovery_ms"] for tab in transitions]}))

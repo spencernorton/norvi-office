@@ -28,6 +28,27 @@ LABEL_GROUPS = (
 
 # The study's command artwork, drawn on a shared 24-unit grid.
 ICONS = {
+    "justifypara": ("M4 5h16M4 9h16M4 13h16M4 17h16", "#f2eff8"),
+    "charmapcontrol": ("M3 21h6v-3a8 8 0 1 1 6 0v3h6", "#f2eff8"),
+    "decrementindent": ("M10 5h11M10 10h11M10 15h11M3 10l4-4m-4 4 4 4M3 20h18", "#f2eff8"),
+    "incrementindent": ("M10 5h11M10 10h11M10 15h11M7 10 3 6m4 4-4 4M3 20h18", "#f2eff8"),
+    "defaultbullet": ("M9 5h12M9 12h12M9 19h12M3 5h.1M3 12h.1M3 19h.1", "#f2eff8"),
+    "defaultnumbering": ("M10 5h11M10 12h11M10 19h11M3 3h1v4M2 11a2 2 0 1 1 4 0l-4 3h4M2 18h3l-2 2h2v2H2", "#f2eff8"),
+    "editstyle": ("M4 3h12l4 4v4M4 3v18h7m-3-15h5m-5 4h7m-2 7 7-7 3 3-7 7h-3Z", "#f2eff8"),
+    "fontdialog": ("M3 3h18v18H3Zm4 14 5-10 5 10m-8-3h6", "#f2eff8"),
+    "insertpagebreak": ("M5 9V3h14v6M5 15v6h14v-6M2 12h20", "#f2eff8"),
+    "linespacing": ("M10 5h11M10 12h11M10 19h11M4 3v18m-3-3 3 3 3-3M1 6l3-3 3 3", "#f2eff8"),
+    "paragraphdialog": ("M13 21V3h7M18 3v18M13 3H9a5 5 0 0 0 0 10h4", "#f2eff8"),
+    "paralefttoright": ("M13 21V3h7M18 3v18M13 3H9a5 5 0 0 0 0 10h4M2 17h7m-3-3 3 3-3 3", "#f2eff8"),
+    "pararighttoleft": ("M13 21V3h7M18 3v18M13 3H9a5 5 0 0 0 0 10h4M9 17H2m3-3-3 3 3 3", "#f2eff8"),
+    "paraspaceincrease": ("M3 4h18M3 9h18M3 15h9M3 20h9m6 1V11m-3 3 3-3 3 3", "#f2eff8"),
+    "paraspacedecrease": ("M3 4h18M3 9h18M3 15h9M3 20h9m6-9v10m-3-3 3 3 3-3", "#f2eff8"),
+    "resetattributes": ("M3 16 8 4l5 12M5 12h6m3 9-3-3 7-7 5 5-5 5h-4Zm2-7 5 5", "#f2eff8"),
+    "setoutline": ("M3 21 10 3h4l7 18h-5l-2-5h-4l-2 5Zm7-9h4l-2-6Z", "#f2eff8"),
+    "strikeout": ("M18 5c-2-3-11-3-11 2s10 4 10 10-9 6-12 2M3 12h18", "#f2eff8"),
+    "styleupdatebyexample": ("M4 3h12l4 4v6M4 3v18h7M8 7h5m-5 4h7m-2 8a5 5 0 0 0 9-3m-1-4v5h-5", "#f2eff8"),
+    "subscript": ("m3 4 10 13M13 4 3 17m13 0a3 3 0 1 1 6 0l-6 5h6", "#f2eff8"),
+    "superscript": ("m3 7 10 14M13 7 3 21m13-16a3 3 0 1 1 6 0l-6 5h6", "#f2eff8"),
     "bold": ("M7 3h6a5 5 0 0 1 0 10H7Zm0 10h7a4 4 0 0 1 0 8H7Z", "#f2eff8"),
     "italic": ("M10 3h10M4 21h10M15 3 9 21", "#f2eff8"),
     "underline": ("M6 3v9a6 6 0 0 0 12 0V3M4 21h16", "#f2eff8"),
@@ -76,6 +97,10 @@ ICONS = {
     "numberformatdecdecimals": ("M2 17h1m5-7c-3 0-3 7 0 7s3-7 0-7m8 0c-3 0-3 7 0 7s3-7 0-7m0-5H8m3-3-3 3 3 3", "#c1aaf3"),
     "searchdialog": ("M19 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0Zm-2 5 5 6", "#f2eff8"),
 }
+
+for alias, original in {"leftpara": "alignleft", "centerpara": "alignhorizontalcenter",
+                        "rightpara": "alignright"}.items():
+    ICONS[alias] = ICONS[original]
 
 
 def localize_commands(config, app="calc"):
