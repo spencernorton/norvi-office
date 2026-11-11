@@ -3,6 +3,7 @@
 import argparse
 import fcntl
 import importlib.util
+from hashlib import sha256
 import json
 import os
 from pathlib import Path
@@ -21,6 +22,10 @@ from uno_utils import connect, prop, stop_office  # noqa: E402
 from calc_ribbon import prepare, preview_package, SHORTCUTS  # noqa: E402
 
 APPS = ("writer", "calc", "impress", "draw", "base", "math", "startcenter")
+
+
+def service_pipe(profile, stage="runtime"):
+    return "norvi_" + stage + "_" + sha256(profile.resolve().as_uri().encode()).hexdigest()[:20]
 
 
 def qualified():
@@ -52,13 +57,13 @@ def initialize(root, env):
     preview_package(SHARE / "extensions/NorviGlass.oxt", package)
     subprocess.run(["unopkg", "add", "-env:UserInstallation=" + profile.as_uri(), str(package)], env=env, check=True)
     prepare(profile, native=True, environment=env)
-    pipe = "norvi_desktop_setup_" + str(os.getuid())
+    pipe = service_pipe(profile, "setup")
     with (root / "setup.log").open("w") as log:
         office = subprocess.Popen(["soffice", "-env:UserInstallation=" + profile.as_uri(), "--headless",
                                    "--norestore", f"--accept=pipe,name={pipe};urp;"],
                                   env=env, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         try:
-            context = connect(pipe)
+            context = connect(pipe, profile)
             supplier = context.getValueByName("/singletons/com.sun.star.ui.theModuleUIConfigurationManagerSupplier")
             manager = supplier.getUIConfigurationManager("com.sun.star.text.TextDocument")
             settings = manager.getSettings(SHORTCUTS, True)
@@ -79,7 +84,7 @@ def initialize(root, env):
     return profile
 
 
-def running(root, pipe):
+def running(root, profile):
     record = root / "running.json"
     if not record.exists():
         return False
@@ -88,7 +93,9 @@ def running(root, pipe):
         process = Path(f'/proc/{item["office_group"]}/cmdline').read_bytes()
     except FileNotFoundError:
         return False
-    return f"--accept=pipe,name={pipe};urp;".encode() in process.split(b"\0")
+    return Path(item["profile"]).resolve() == profile.resolve() and \
+        f'--accept=pipe,name={item["pipe"]};urp;'.encode() in process.split(b"\0") and \
+        ("-env:UserInstallation=" + profile.as_uri()).encode() in process.split(b"\0")
 
 
 def launch(app, files):
@@ -119,9 +126,10 @@ def launch(app, files):
             profile = initialize(root, env)
         finally:
             os.chdir(original)
-        pipe = "norvi_desktop_" + str(os.getuid())
+        pipe = service_pipe(profile)
+        env["NORVI_OFFICE_PROFILE_URI"] = profile.as_uri()
         env["GTK3_MODULES"] = str(HERE.parents[3] / "lib/x86_64-linux-gnu/norvi-office/libnorvi-office-header.so")
-        if running(root, pipe):
+        if running(root, profile):
             subprocess.Popen(command(app, files, profile), env=env, start_new_session=True)
             return {"native": True, "reused": True, "profile": str(profile)}
         if (root / "running.json").exists():
@@ -146,7 +154,7 @@ def launch(app, files):
             children[name] = process.pid
         result = {"native": True, "office_group": office.pid, "profile": str(profile), "pipe": pipe, **children}
         (root / "running.json").write_text(json.dumps(result) + "\n")
-        context = connect(pipe)
+        context = connect(pipe, profile)
         desktop = context.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", context)
         until = time.monotonic() + 20
         while time.monotonic() < until:

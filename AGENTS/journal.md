@@ -1,5 +1,21 @@
 # Journal
 
+## 2026-11-11 — Checkpoint before desktop activation
+
+- Actual host Calc/Writer header actions and duplicate-caption routing passed
+  on the persistent desktop profile. That installed beta still uses the older
+  accessibility geometry bridge; it is not the newer render-sync source.
+- Native C geometry measured during draw and acknowledged before buffer commit
+  passed an isolated Calc render check with 230 active samples and unchanged
+  sampled body pixels. Physical compositor and Writer render acceptance remain
+  pending; headless captures are not host-desktop evidence.
+- Found a globally named UNO channel shared by independent test profiles.
+  Prepared profile-derived channel names, connected-profile ownership checks
+  and safe reuse of a running legacy session. These changes require native
+  qualification before installation.
+- Host activity is checkpointed for planned maintenance. No further host
+  deployment, tests or activation until the coordinating task clears it.
+
 ## 2026-11-11 — Prepare actual desktop integration
 
 - The user rejected the nested Devkit delivery and reported persistent visual

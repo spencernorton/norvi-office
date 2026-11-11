@@ -94,6 +94,8 @@ def inside(output):
         with (output / "launch.log").open("w") as log:
             subprocess.run([sys.executable, str(share / "experimental/desktop/launch.py"), "--worker", "--app", app],
                            env=env, stdout=log, stderr=subprocess.STDOUT, timeout=60, check=True)
+        wait(lambda: (s if (s := state()) and s["enabled"] and s["geometry_source"] == "native-render" else None),
+             "Initial native frame did not finish rendering")
         call("OfficeTest", "Place")
         call("OfficeTest", "WindowState", "(s)", "maximized")
         active = wait(lambda: (s if (s := state()) and s["enabled"] and s["geometry_source"] == "native-render" else None),

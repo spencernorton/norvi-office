@@ -7,11 +7,13 @@ import time
 
 import uno
 import unohelper
+from urllib.parse import unquote, urlsplit
 
 from com.sun.star.frame import XStatusListener
 from gi.repository import Gio, GLib
 
 from routing import COMMANDS, matching_frame, uses_pipe
+from uno_utils import verify_profile
 
 API = """<node><interface name="dev.norvi.OfficeHeader">
   <method name="Describe">
@@ -54,6 +56,9 @@ class Broker:
         else:
             raise RuntimeError("Private LibreOffice pipe did not become available")
         manager = self.context.ServiceManager
+        expected_profile = os.environ.get("NORVI_OFFICE_PROFILE_URI")
+        if expected_profile:
+            verify_profile(self.context, Path(unquote(urlsplit(expected_profile).path)))
         self.desktop = manager.createInstanceWithContext("com.sun.star.frame.Desktop", self.context)
         self.transformer = manager.createInstanceWithContext("com.sun.star.util.URLTransformer", self.context)
         self.dispatcher = manager.createInstanceWithContext("com.sun.star.frame.DispatchHelper", self.context)

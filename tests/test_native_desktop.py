@@ -19,6 +19,18 @@ def load(name, path):
 
 
 class NativeDesktopTests(unittest.TestCase):
+    def test_connected_profile_must_match_before_any_document_commands(self):
+        with patch.dict(sys.modules, {"uno": SimpleNamespace()}):
+            utilities = load("native_profile_check", ROOT / "norvi-office/experiments/native-header/uno_utils.py")
+        profile = Path("/tmp/native-profile-one")
+        actual = (profile / "user").as_uri()
+        service = SimpleNamespace(substituteVariables=lambda _value, _required: actual)
+        context = SimpleNamespace(ServiceManager=SimpleNamespace(createInstanceWithContext=lambda _name, _context: service))
+        utilities.verify_profile(context, profile)
+        actual = Path("/tmp/native-profile-two/user").as_uri()
+        with self.assertRaises(RuntimeError):
+            utilities.verify_profile(context, profile)
+
     def test_direct_launch_preserves_real_document_arguments_without_a_development_desktop(self):
         with patch.dict(sys.modules, {"uno_utils": SimpleNamespace(connect=None, prop=None, stop_office=None),
                                       "calc_ribbon": SimpleNamespace(prepare=None, preview_package=None, SHORTCUTS=None)}):
@@ -31,6 +43,8 @@ class NativeDesktopTests(unittest.TestCase):
         self.assertNotIn("--headless", args)
         self.assertNotIn("gnome-shell", args)
         self.assertFalse(any("Ember" in arg or "devkit" in arg for arg in args))
+        self.assertNotEqual(runtime.service_pipe(Path("/tmp/profile-one")), runtime.service_pipe(Path("/tmp/profile-two")))
+        self.assertEqual(runtime.service_pipe(Path("/tmp/profile-one")), runtime.service_pipe(Path("/tmp/profile-one")))
 
     @unittest.skipUnless(shutil.which("desktop-file-validate"), "Linux desktop required")
     def test_original_profile_shortcuts_and_documents_survive_install_edit_protection_and_rollback(self):

@@ -60,7 +60,7 @@ def main():
     os.environ.pop("AT_SPI_BUS_ADDRESS", None)
     root = Path(os.environ.get("XDG_STATE_HOME", Path.home() / ".local/state")) / "norvi-office/desktop"
     record = json.loads((root / "running.json").read_text())
-    context = connect(record["pipe"])
+    context = connect(record["pipe"], Path(record["profile"]))
     desktop = context.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", context)
     directory = Path(tempfile.mkdtemp(prefix="native-check-", dir=root))
     documents = []

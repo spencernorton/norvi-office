@@ -348,14 +348,14 @@ def prepare(profile, native=False, environment=None):
     with destination.open("xb") as output:
         tree.write(output, encoding="utf-8", xml_declaration=True)
 
-    pipe = "norvi_ribbon_" + root.name.replace(".", "_")
+    pipe = "norvi_ribbon_" + sha256(profile.as_uri().encode()).hexdigest()[:20]
     with Path("calc-ribbon-setup.log").open("w") as log:
         office = subprocess.Popen([
             "soffice", "-env:UserInstallation=" + profile.as_uri(), "--headless", "--norestore",
             f"--accept=pipe,name={pipe};urp;",
         ], env=environment, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
         try:
-            context = connect(pipe)
+            context = connect(pipe, profile)
             supplier = context.getValueByName("/singletons/com.sun.star.ui.theModuleUIConfigurationManagerSupplier")
             manager = supplier.getUIConfigurationManager("com.sun.star.sheet.SpreadsheetDocument")
             settings = manager.getSettings(SHORTCUTS, True)
