@@ -98,9 +98,8 @@ def build(output):
         control = stage / "DEBIAN"
         control.mkdir()
         (control / "control").write_text((ROOT / "packaging/control").read_text().replace("@VERSION@", version))
-        for path in stage.rglob("*"):
-            if path.is_file() and not os.access(path, os.X_OK):
-                path.chmod(0o644)
+        for path in [stage, *stage.rglob("*")]:
+            path.chmod(0o755 if path.is_dir() or os.access(path, os.X_OK) else 0o644)
             os.utime(path, (epoch, epoch), follow_symlinks=False)
         package = output / f"norvi-office_{version}_amd64.deb"
         subprocess.run(["dpkg-deb", "--root-owner-group", "--build", str(stage), str(package)], check=True,
