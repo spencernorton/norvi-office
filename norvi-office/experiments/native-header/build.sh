@@ -4,6 +4,9 @@ root="$(cd "$(dirname "$0")" && pwd)"
 output="$(realpath -m "${1:?Provide an output directory under /tmp/norvi-office-tests}")"
 case "$output" in /tmp/norvi-office-tests/*) ;; *) exit 2 ;; esac
 mkdir -p "$output"
+cc -std=c11 -Wall -Wextra -Werror -O2 "$root/test_glass.c" -o "$output/test-glass" \
+    $(pkg-config --cflags --libs cairo) -lm
+"$output/test-glass"
 cc -std=c11 -Wall -Wextra -Werror -O2 -fPIC -shared \
     "$root/header.c" -o "$output/libnorvi-office-header.so" \
     $(pkg-config --cflags --libs gtk+-3.0 gmodule-2.0)

@@ -18,3 +18,13 @@ export function titlebarGeometry(geometry) {
         return null;
     return {...geometry, edge: geometry.join_start};
 }
+
+// Native reports enroll blur only. No message order or geometry can grant a
+// compositor alpha mask: alpha must already be in the client-painted buffer.
+export function nativeBackdrop(reports, now, maxAge, supported, dark) {
+    return {
+        mask: false,
+        blur: Boolean(supported && dark && reports.length && reports.every(item =>
+            item.client_alpha === true && now >= item.at && now - item.at < maxAge)),
+    };
+}

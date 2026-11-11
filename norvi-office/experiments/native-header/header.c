@@ -4,6 +4,7 @@
 #include <gmodule.h>
 #include <gdk/gdkwayland.h>
 #include <unistd.h>
+#include "glass_pixels.h"
 
 typedef struct {
     gint refs;
@@ -19,6 +20,13 @@ typedef struct {
     gint geometry[5];
     gint64 reported_at;
     gboolean geometry_ack;
+    GdkFrameClock *clock;
+    gulong frame_handler;
+    gint64 complete_frame, receipt_at;
+    guint64 draws, glass_frames, glass_results[GLASS_RESULT_COUNT];
+    gint64 glass_time, glass_max_time;
+    GlassPaint glass_paint;
+    const char *glass_mode;
 } Header;
 
 static const char *commands[] = {"open", "save", "undo", "redo", "settings"};
@@ -51,6 +59,9 @@ static GSettings *popup_settings, *interface_settings, *contrast_settings;
 static const char *token;
 static const char *broker_name;
 static gboolean native_desktop;
+/* Experimental until the exact client/desktop pair passes native rendering
+ * qualification. Ordinary installed launches retain the opaque GTK path. */
+static gboolean client_glass;
 
 static Header *header_ref(Header *header) {
     g_atomic_int_inc(&header->refs);
@@ -65,6 +76,7 @@ static void header_unref(gpointer data) {
     g_clear_object(&header->cancel);
     g_clear_object(&header->model);
     g_clear_object(&header->actions);
+    g_clear_object(&header->clock);
     g_free(header->identity);
     g_free(header->menu_signature);
     g_free(header->reported_title);
@@ -75,6 +87,10 @@ static void destroyed(GtkWidget *widget, gpointer data) {
     (void)widget;
     Header *header = data;
     header->destroyed = TRUE;
+    if (header->clock && header->frame_handler) {
+        g_signal_handler_disconnect(header->clock, header->frame_handler);
+        header->frame_handler = 0;
+    }
     header->window = NULL;
     if (header->timer) {
         g_source_remove(header->timer);
@@ -180,12 +196,45 @@ static gboolean native_geometry(Header *header, gint geometry[5]) {
     return geometry[4] < geometry[3] && geometry[3] < geometry[2];
 }
 
-static void report_native_geometry(Header *header) {
-    if (!native_desktop || header->destroyed || !header->bus || !window_handle(header))
+static void geometry_receipt(Header *header, const gint measured[5], gboolean changed) {
+    gint64 now = g_get_monotonic_time();
+    if (!changed && now - header->receipt_at < 250000)
         return;
+    gchar *name = g_strdup_printf("geometry-%s.json", header->identity);
+    gchar *path = g_build_filename(g_getenv("NORVI_OFFICE_SESSION_DIR"), name, NULL);
+    gchar *receipt = g_strdup_printf("{\"pid\":%u,\"handle\":%" G_GUINT64_FORMAT
+        ",\"width\":%d,\"height\":%d,\"edge\":%d,\"join\":%d,\"join_start\":%d,\"render_ack\":%s,"
+        "\"client_glass_requested\":%s,\"client_glass_reason\":\"%s\",\"draws\":%" G_GUINT64_FORMAT
+        ",\"glass_frames\":%" G_GUINT64_FORMAT ",\"alpha_bounds\":[%d,%d,%d,%d],\"alpha_pixels\":%lu,"
+        "\"compose_us_total\":%" G_GINT64_FORMAT ",\"compose_us_max\":%" G_GINT64_FORMAT
+        ",\"results\":{\"applied\":%" G_GUINT64_FORMAT ",\"geometry\":%" G_GUINT64_FORMAT
+        ",\"target\":%" G_GUINT64_FORMAT ",\"format\":%" G_GUINT64_FORMAT
+        ",\"transform\":%" G_GUINT64_FORMAT ",\"clip\":%" G_GUINT64_FORMAT
+        ",\"bounds\":%" G_GUINT64_FORMAT ",\"source_alpha\":%" G_GUINT64_FORMAT "}}\n",
+        (guint)getpid(), window_handle(header), measured[0], measured[1], measured[2],
+        measured[3], measured[4], header->geometry_ack ? "true" : "false",
+        client_glass ? "true" : "false", header->glass_mode ? header->glass_mode : "disabled",
+        header->draws, header->glass_frames, header->glass_paint.x, header->glass_paint.y,
+        header->glass_paint.width, header->glass_paint.edge, header->glass_paint.pixels,
+        header->glass_time, header->glass_max_time,
+        header->glass_results[0], header->glass_results[1], header->glass_results[2],
+        header->glass_results[3], header->glass_results[4], header->glass_results[5],
+        header->glass_results[6], header->glass_results[7]);
+    g_file_set_contents(path, receipt, -1, NULL);
+    g_free(receipt);
+    g_free(path);
+    g_free(name);
+    header->receipt_at = now;
+}
+
+static gboolean report_native_geometry(Header *header, const gint *current) {
+    if (!native_desktop || header->destroyed || !header->bus || !window_handle(header))
+        return FALSE;
     gint measured[5] = {gtk_widget_get_allocated_width(header->window),
         gtk_widget_get_allocated_height(header->window), 0, 0, 0};
-    if (!native_geometry(header, measured))
+    if (current)
+        memcpy(measured, current, sizeof(measured));
+    else if (!native_geometry(header, measured))
         measured[2] = measured[3] = measured[4] = 0;
     const gchar *title = gtk_window_get_title(GTK_WINDOW(header->window));
     if (!title)
@@ -195,9 +244,10 @@ static void report_native_geometry(Header *header) {
         g_strcmp0(title, header->reported_title) != 0;
     if (now - header->reported_at < 250000 &&
             !changed)
-        return;
+        return header->geometry_ack;
     GVariant *reply = g_dbus_connection_call_sync(header->bus, "org.gnome.Shell",
-        "/dev/norvi/OfficeGeometry", "dev.norvi.OfficeGeometry", "ReportNative",
+        "/dev/norvi/OfficeGeometry", "dev.norvi.OfficeGeometry",
+        client_glass ? "ReportClientGlass" : "ReportNative",
         g_variant_new("(tsiiiii)", window_handle(header), title,
             measured[0], measured[1], measured[2], measured[3], measured[4]),
         G_VARIANT_TYPE("(b)"), G_DBUS_CALL_FLAGS_NO_AUTO_START, 100, NULL, NULL);
@@ -205,32 +255,108 @@ static void report_native_geometry(Header *header) {
     if (reply)
         g_variant_get(reply, "(b)", &acknowledged);
     g_clear_pointer(&reply, g_variant_unref);
-    if (changed || acknowledged != header->geometry_ack) {
-        gchar *name = g_strdup_printf("geometry-%s.json", header->identity);
-        gchar *path = g_build_filename(g_getenv("NORVI_OFFICE_SESSION_DIR"), name, NULL);
-        gchar *receipt = g_strdup_printf("{\"pid\":%u,\"handle\":%" G_GUINT64_FORMAT
-            ",\"width\":%d,\"height\":%d,\"edge\":%d,\"join\":%d,\"join_start\":%d,\"render_ack\":%s}\n",
-            (guint)getpid(), window_handle(header), measured[0], measured[1], measured[2],
-            measured[3], measured[4], acknowledged ? "true" : "false");
-        g_file_set_contents(path, receipt, -1, NULL);
-        g_free(receipt);
-        g_free(path);
-        g_free(name);
-    }
+    gboolean lost = header->geometry_ack && !acknowledged;
+    changed = changed || acknowledged != header->geometry_ack;
     header->geometry_ack = acknowledged;
     memcpy(header->geometry, measured, sizeof(measured));
     g_free(header->reported_title);
     header->reported_title = g_strdup(title);
     header->reported_at = now;
+    geometry_receipt(header, measured, changed);
+    if (client_glass && lost)
+        gtk_widget_queue_draw(header->window);
+    return acknowledged;
+}
+
+static void complete_frame(GdkFrameClock *clock, gpointer data) {
+    Header *header = data;
+    if (header->destroyed || !gtk_widget_get_mapped(header->window))
+        return;
+    /* Expand damage before GDK allocates the paint buffer. This does not start
+     * a continuous animation; it runs only on frames GTK already requested.
+     * Full repaint is an intentional, measurable experimental performance cost. */
+    header->complete_frame = gdk_frame_clock_get_frame_counter(clock);
+    gdk_window_invalidate_rect(gtk_widget_get_window(header->window), NULL, TRUE);
+}
+
+static void glass_realized(GtkWidget *widget, gpointer data) {
+    Header *header = data;
+    if (header->clock)
+        return;
+    header->clock = g_object_ref(gtk_widget_get_frame_clock(widget));
+    header->frame_handler = g_signal_connect(header->clock, "before-paint",
+        G_CALLBACK(complete_frame), header);
+    gtk_widget_queue_draw(widget);
+}
+
+static void glass_unrealized(GtkWidget *widget, gpointer data) {
+    (void)widget;
+    Header *header = data;
+    if (header->clock && header->frame_handler)
+        g_signal_handler_disconnect(header->clock, header->frame_handler);
+    header->frame_handler = 0;
+    header->complete_frame = -1;
+    g_clear_object(&header->clock);
+}
+
+static void glass_appearance_changed(GSettings *settings, gchar *key, gpointer data) {
+    (void)settings;
+    (void)key;
+    gtk_widget_queue_draw(GTK_WIDGET(data));
+}
+
+static gboolean glass_appearance(GtkWidget *widget) {
+    gchar *scheme = g_settings_get_string(interface_settings, "color-scheme");
+    gchar *theme = g_settings_get_string(interface_settings, "gtk-theme");
+    gboolean supported = g_strcmp0(scheme, "prefer-dark") == 0 &&
+        !g_settings_get_boolean(contrast_settings, "high-contrast") &&
+        !g_strrstr(theme, "HighContrast") && gtk_widget_get_scale_factor(widget) == 1 &&
+        !(gdk_window_get_state(gtk_widget_get_window(widget)) & GDK_WINDOW_STATE_FULLSCREEN);
+    g_free(scheme);
+    g_free(theme);
+    return supported;
 }
 
 static gboolean chrome_draw(GtkWidget *widget, cairo_t *context, gpointer data) {
-    (void)widget;
-    (void)context;
-    /* GTK finishes this signal before committing the new Wayland buffer.
-     * The acknowledgment orders the report, but does not bind it to a buffer.
-     * Direct-desktop masking therefore remains titlebar-only until qualified. */
-    report_native_geometry(data);
+    Header *header = data;
+    if (!native_desktop)
+        return FALSE;
+    const char *previous_mode = header->glass_mode;
+    header->draws++;
+    header->glass_paint = (GlassPaint){0};
+    gint measured[5] = {gtk_widget_get_allocated_width(widget),
+        gtk_widget_get_allocated_height(widget), 0, 0, 0};
+    gboolean geometry = native_geometry(header, measured);
+    gboolean acknowledged = report_native_geometry(header, measured);
+    if (!client_glass)
+        return FALSE;
+    /* Shell acknowledges backdrop capability, never a particular buffer. It
+     * cannot change surface alpha in this protocol. Every alpha write below
+     * belongs to the same freshly painted client pixels and Wayland commit. */
+    gdk_window_set_opaque_region(gtk_widget_get_window(widget), NULL);
+    if (!geometry || measured[0] != gtk_widget_get_allocated_width(widget) ||
+            measured[1] != gtk_widget_get_allocated_height(widget)) {
+        header->glass_mode = "geometry";
+    } else if (!acknowledged) {
+        header->glass_mode = "backdrop-unavailable";
+    } else if (!glass_appearance(widget)) {
+        header->glass_mode = "appearance-or-scale";
+    } else if (!header->clock || header->complete_frame !=
+            gdk_frame_clock_get_frame_counter(header->clock)) {
+        header->glass_mode = "incomplete-frame";
+    } else {
+        gint64 start = g_get_monotonic_time();
+        GlassResult result = glass_compose(context, measured[0], measured[1], measured[2],
+            &header->glass_paint);
+        gint64 elapsed = g_get_monotonic_time() - start;
+        header->glass_time += elapsed;
+        header->glass_max_time = MAX(header->glass_max_time, elapsed);
+        header->glass_results[result]++;
+        header->glass_mode = glass_reason(result);
+        if (result == GLASS_APPLIED)
+            header->glass_frames++;
+    }
+    geometry_receipt(header, measured, previous_mode != header->glass_mode);
     return FALSE;
 }
 
@@ -402,7 +528,7 @@ static gboolean refresh(gpointer data) {
         return G_SOURCE_REMOVE;
     if (!gtk_widget_get_realized(header->window))
         return G_SOURCE_CONTINUE;
-    report_native_geometry(header);
+    report_native_geometry(header, NULL);
     GdkWindow *surface = gtk_widget_get_window(header->window);
     /* Read the pinned GTK backend's exported menu, never its private structs. */
     GMenuModel *model = g_object_get_data(G_OBJECT(surface), "g-lo-menubar");
@@ -485,9 +611,20 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
     header->identity = g_uuid_string_random();
     header->window = window;
     header->cancel = g_cancellable_new();
+    header->complete_frame = -1;
     header->bus = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, NULL);
     g_object_set_data_full(G_OBJECT(window), "norvi-header", header, header_unref);
     g_signal_connect(window, "destroy", G_CALLBACK(destroyed), header);
+    if (client_glass) {
+        GdkVisual *visual = gdk_screen_get_rgba_visual(gtk_widget_get_screen(window));
+        if (visual) {
+            gtk_widget_set_visual(window, visual);
+            g_signal_connect(window, "realize", G_CALLBACK(glass_realized), header);
+            g_signal_connect(window, "unrealize", G_CALLBACK(glass_unrealized), header);
+            g_signal_connect_object(interface_settings, "changed", G_CALLBACK(glass_appearance_changed), window, 0);
+            g_signal_connect_object(contrast_settings, "changed", G_CALLBACK(glass_appearance_changed), window, 0);
+        }
+    }
     header->bar = gtk_window_get_titlebar(GTK_WINDOW(window));
     if (!GTK_IS_HEADER_BAR(header->bar)) {
         header->bar = gtk_header_bar_new();
@@ -622,6 +759,7 @@ G_MODULE_EXPORT void gtk_module_init(gint *argc, gchar ***argv) {
     if (!isolated && !desktop)
         return;
     native_desktop = desktop && !isolated;
+    client_glass = native_desktop && g_strcmp0(g_getenv("NORVI_OFFICE_CLIENT_GLASS"), "1") == 0;
     broker_name = g_getenv("NORVI_OFFICE_HEADER_BUS");
     if (!broker_name)
         broker_name = "dev.norvi.OfficeHeader";

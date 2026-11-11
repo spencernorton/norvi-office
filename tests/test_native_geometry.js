@@ -1,4 +1,4 @@
-import {selectGeometry, titlebarGeometry} from '../norvi-office/experiments/wayland-glass/extension/geometryPolicy.js';
+import {selectGeometry, titlebarGeometry, nativeBackdrop} from '../norvi-office/experiments/wayland-glass/extension/geometryPolicy.js';
 
 const observed = {edge: 164, join: 52, join_start: 45};
 const cases = [
@@ -30,3 +30,22 @@ for (const geometry of [null, {...observed, join_start: undefined}, {...observed
         throw new Error('Missing or invalid titlebar geometry did not fail opaque');
 }
 print('8 native titlebar-only safety checks passed');
+
+const nativeReports = [oldFrame, newFrame, oldFrame].map(geometry =>
+    ({...geometry, client_alpha: true, at: 100}));
+for (const report of nativeReports) {
+    const policy = nativeBackdrop([report], 101, 600, true, true);
+    if (policy.mask !== false || policy.blur !== true)
+        throw new Error('A report granted native compositor alpha or lost the fixed backdrop');
+}
+for (const [reports, now, supported, dark] of [
+    [[], 101, true, true], [[{...nativeReports[0], client_alpha: false}], 101, true, true],
+    [[{...nativeReports[0], client_alpha: undefined}], 101, true, true],
+    [nativeReports, 700, true, true], [nativeReports, 99, true, true],
+    [nativeReports, 101, false, true], [nativeReports, 101, true, false],
+]) {
+    const policy = nativeBackdrop(reports, now, 600, supported, dark);
+    if (policy.mask !== false || policy.blur !== false)
+        throw new Error('Unsupported client state did not remove the native backdrop');
+}
+print('10 native client-buffer/backdrop safety checks passed');

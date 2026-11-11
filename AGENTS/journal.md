@@ -1,5 +1,21 @@
 # Journal
 
+## 2026-11-11 — Add an opt-in client-buffer glass candidate
+
+- Native Shell mode no longer attaches the geometry-driven alpha shader.
+  The new protocol enrolls backdrop blur only; reports cannot change client
+  alpha or make document pixels translucent before a matching buffer commit.
+- The experimental GTK path selects RGBA before realization and requests a
+  complete repaint on existing frames. It modifies only a fully opaque ARGB32
+  image target with complete clip and supported integer 1× coordinates. The
+  current painted frame's document pixels remain byte-identical, while bright
+  and saturated control ink stays opaque. Ordinary launches retain opaque UI.
+- Added receipts for actual alpha application, rejection reasons, bounds and
+  composition time. Pure Cairo pixel tests, twenty-four JavaScript policy
+  cases and the existing Python suite pass locally. GTK compilation, real CSD
+  target support, appearance transitions and full-repaint performance still
+  require exact Linux candidate qualification; no installed acceptance claimed.
+
 ## 2026-11-11 — Cover shared Home, Insert and shortcut command artwork
 
 - Audited actual official Calc, Writer and Impress notebookbar command keys,

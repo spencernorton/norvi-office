@@ -6,12 +6,15 @@ import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
-import {selectGeometry, titlebarGeometry} from './geometryPolicy.js';
+import {selectGeometry, nativeBackdrop} from './geometryPolicy.js';
 
 const WINDOW_ID = /^(?:org\.libreoffice\.LibreOffice\.|libreoffice-)(writer|calc|impress|draw|base|math)$/i;
 const API = `<node><interface name="dev.norvi.OfficeGeometry">
   <method name="Report"><arg type="s" direction="in"/></method>
   <method name="ReportNative"><arg type="t" direction="in"/><arg type="s" direction="in"/>
+    <arg type="i" direction="in"/><arg type="i" direction="in"/><arg type="i" direction="in"/>
+    <arg type="i" direction="in"/><arg type="i" direction="in"/><arg type="b" direction="out"/></method>
+  <method name="ReportClientGlass"><arg type="t" direction="in"/><arg type="s" direction="in"/>
     <arg type="i" direction="in"/><arg type="i" direction="in"/><arg type="i" direction="in"/>
     <arg type="i" direction="in"/><arg type="i" direction="in"/><arg type="b" direction="out"/></method>
   <method name="PrepareChrome"><arg type="i" direction="in"/></method>
@@ -156,7 +159,15 @@ export default class NorviOffice extends Extension {
         this.syncAll();
     }
 
-    ReportNativeAsync([handle, title, width, height, edge, join, joinStart], invocation) {
+    ReportNativeAsync(values, invocation) {
+        this.reportNative(values, invocation, false);
+    }
+
+    ReportClientGlassAsync(values, invocation) {
+        this.reportNative(values, invocation, true);
+    }
+
+    reportNative([handle, title, width, height, edge, join, joinStart], invocation, clientAlpha) {
         try {
             if (!this.nativeHost || !Number.isSafeInteger(handle) || handle <= 0 || title.length > 4096 ||
                 ![width, height].every(n => Number.isInteger(n) && n > 0 && n <= 16384))
@@ -178,12 +189,14 @@ export default class NorviOffice extends Extension {
             if (!this.nativeReports.has(key) && this.nativeReports.size >= 128)
                 this.nativeReports.delete(this.nativeReports.keys().next().value);
             const valid = joinStart >= 0 && joinStart < join && join < edge && edge < height / 2;
-            this.nativeReports.set(key, {pid, sender, title, size: [width, height],
+            this.nativeReports.set(key, {pid, sender, title, size: [width, height], client_alpha: clientAlpha,
                 edge: valid ? edge : 0, join: valid ? join : 0, join_start: valid ? joinStart : 0,
                 at: GLib.get_monotonic_time()});
             this.scan();
             this.syncAll();
-            invocation.return_value(new GLib.Variant('(b)', [true]));
+            const backdrop = [...this.entries.values()].some(entry => entry.window.get_pid() === pid &&
+                entry.window.get_title() === title && entry.clientAlpha && entry.blur.visible);
+            invocation.return_value(new GLib.Variant('(b)', [clientAlpha ? backdrop : true]));
         } catch (_error) {
             invocation.return_value(new GLib.Variant('(b)', [false]));
         }
@@ -208,8 +221,8 @@ export default class NorviOffice extends Extension {
         for (const entry of this.entries.values()) {
             if (entry.window.get_pid() !== pid)
                 continue;
-            // This client acknowledges its new boundary inside GTK's draw
-            // signal, before committing the corresponding Wayland buffer.
+            // Direct clients carry alpha in the pixels; input cannot race a
+            // compositor mask because that mask never exists in native mode.
             if (entry.direct)
                 continue;
             if (y !== -1 && !(y >= entry.join && y < entry.inputEdge))
@@ -228,7 +241,9 @@ export default class NorviOffice extends Extension {
         const box = rect => [rect.x, rect.y, rect.width, rect.height];
         return JSON.stringify([...this.entries.values()].map(entry => ({
             app: moduleFor(entry.window), pid: entry.window.get_pid(),
-            window_id: entry.window.get_stable_sequence(), title: entry.window.get_title(), enabled: entry.mask.enabled,
+            window_id: entry.window.get_stable_sequence(), title: entry.window.get_title(),
+            enabled: this.nativeHost ? entry.blur.visible : entry.mask.enabled,
+            alpha_source: this.nativeHost ? 'client-buffer' : 'compositor',
             geometry_source: entry.direct ? 'native-render' : 'accessibility',
             edge: entry.edge, reason: entry.reason, transitionCount: entry.transitionCount,
             frame: box(entry.window.get_frame_rect()), buffer: box(entry.window.get_buffer_rect()),
@@ -342,9 +357,10 @@ export default class NorviOffice extends Extension {
         const guard = new RevealBackdrop();
         actor.add_effect(guard);
         actor.insert_child_below(blur, surface);
-        surface.add_effect_with_name('norvi-office-mask', mask);
+        if (!this.nativeHost)
+            surface.add_effect_with_name('norvi-office-mask', mask);
         const entry = {blur, mask, surface, guard, window, edge: null, reason: 'geometry',
-            blockedUntil: 0, transitionCount: 0, inputEdge: 0, join: 0, direct: false};
+            blockedUntil: 0, transitionCount: 0, inputEdge: 0, join: 0, direct: false, clientAlpha: false};
         this.entries.set(actor, entry);
         const sync = () => {
             const buffer = window.get_buffer_rect();
@@ -363,16 +379,30 @@ export default class NorviOffice extends Extension {
             } else if (entry.direct) {
                 geometry = null;
             }
-            // This applies to the accessibility fallback as well: neither
-            // report path identifies which client buffer contains the layout.
-            if (this.nativeHost)
-                geometry = titlebarGeometry(geometry);
             const dark = this.interfaceSettings.get_string('color-scheme') === 'prefer-dark' &&
                 !this.contrastSettings.get_boolean('high-contrast') &&
                 !/highcontrast/i.test(this.interfaceSettings.get_string('gtk-theme'));
             const supported = actor.visible && !window.is_fullscreen() &&
                 global.display.get_monitor_scale(window.get_monitor()) === 1;
             const top = rect.y - buffer.y;
+            if (this.nativeHost) {
+                const policy = nativeBackdrop(native, GLib.get_monotonic_time(), MAX_AGE, supported, dark);
+                // The entire upper half is a stable backdrop envelope. Client
+                // source validation confines glass above its current document
+                // edge, strictly inside this envelope. Geometry reports can
+                // never change surface opacity or expose document pixels.
+                mask.enabled = policy.mask;
+                blur.visible = policy.blur;
+                entry.clientAlpha = policy.blur;
+                entry.reason = !supported ? 'window-or-scale' : !dark ? 'appearance' :
+                    policy.blur ? 'client-backdrop' : 'client-alpha-unavailable';
+                entry.edge = policy.blur && geometry ? geometry.edge : null;
+                if (policy.blur) {
+                    blur.set_position(rect.x - buffer.x, top);
+                    blur.set_size(rect.width, Math.ceil(rect.height / 2));
+                }
+                return;
+            }
             const valid = geometry && geometry.edge > top &&
                 geometry.join > top && geometry.edge < top + rect.height;
             const settling = !entry.direct && this.reportAt <= entry.blockedUntil && entry.blockedUntil > 0;
@@ -388,7 +418,7 @@ export default class NorviOffice extends Extension {
                 geometry = {...geometry, edge: geometry.join_start};
             const visible = supported && dark && valid && (!settling || titleOnly);
             entry.reason = !supported ? 'window-or-scale' : !dark ? 'appearance' :
-                settling ? 'transition' : !valid ? 'geometry' : this.nativeHost ? 'native-titlebar-only' : 'active';
+                settling ? 'transition' : !valid ? 'geometry' : 'active';
             entry.edge = visible ? geometry.edge : null;
             mask.enabled = Boolean(visible);
             blur.visible = Boolean(visible);
@@ -431,7 +461,8 @@ export default class NorviOffice extends Extension {
         actor.meta_window?.disconnectObject(this);
         if (!destroyed) {
             actor.disconnectObject(this);
-            entry.surface.remove_effect(entry.mask);
+            if (!this.nativeHost)
+                entry.surface.remove_effect(entry.mask);
             actor.remove_effect(entry.guard);
         }
         entry.blur.destroy();
