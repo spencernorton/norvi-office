@@ -11,6 +11,9 @@ import {selectGeometry} from './geometryPolicy.js';
 const WINDOW_ID = /^(?:org\.libreoffice\.LibreOffice\.|libreoffice-)(writer|calc|impress|draw|base|math)$/i;
 const API = `<node><interface name="dev.norvi.OfficeGeometry">
   <method name="Report"><arg type="s" direction="in"/></method>
+  <method name="ReportNative"><arg type="t" direction="in"/><arg type="s" direction="in"/>
+    <arg type="i" direction="in"/><arg type="i" direction="in"/><arg type="i" direction="in"/>
+    <arg type="i" direction="in"/><arg type="i" direction="in"/><arg type="b" direction="out"/></method>
   <method name="PrepareChrome"><arg type="i" direction="in"/></method>
   <method name="State"><arg type="s" direction="out"/></method>
   <method name="CaptureNative"><arg type="u" direction="in"/><arg type="s" direction="in"/></method>
@@ -27,11 +30,20 @@ function moduleFor(window) {
     return name ?? null;
 }
 
+const uniformValues = new WeakMap();
 function uniform(effect, name, number) {
+    let values = uniformValues.get(effect);
+    if (!values) {
+        values = new Map();
+        uniformValues.set(effect, values);
+    }
+    if (values.get(name) === number)
+        return;
     const value = new GObject.Value();
     value.init(GObject.TYPE_FLOAT);
     value.set_float(number);
     effect.set_uniform_value(name, value);
+    values.set(name, number);
 }
 
 const RibbonMask = GObject.registerClass(
@@ -94,6 +106,7 @@ export default class NorviOffice extends Extension {
         if (!GLib.getenv('NORVI_OFFICE_TEST_DIR') && !marker.query_exists(null))
             throw new Error('Launch the isolated Norvi Office preview harness.');
         this.entries = new Map();
+        this.nativeReports = new Map();
         this.geometry = [];
         this.reportAt = 0;
         this.interfaceSettings = new Gio.Settings({schema_id: 'org.gnome.desktop.interface'});
@@ -143,6 +156,39 @@ export default class NorviOffice extends Extension {
         this.syncAll();
     }
 
+    ReportNativeAsync([handle, title, width, height, edge, join, joinStart], invocation) {
+        try {
+            if (!this.nativeHost || !Number.isSafeInteger(handle) || handle <= 0 || title.length > 4096 ||
+                ![width, height].every(n => Number.isInteger(n) && n > 0 && n <= 16384))
+                throw new Error('Invalid desktop chrome report');
+            const sender = invocation.get_sender();
+            const [pid] = Gio.DBus.session.call_sync('org.freedesktop.DBus', '/org/freedesktop/DBus',
+                'org.freedesktop.DBus', 'GetConnectionUnixProcessID', new GLib.Variant('(s)', [sender]),
+                new GLib.VariantType('(u)'), Gio.DBusCallFlags.NONE, 100, null).deepUnpack();
+            const [, bytes] = Gio.File.new_for_path(`/proc/${pid}/environ`).load_contents(null);
+            const required = `NORVI_OFFICE_SESSION_DIR=${GLib.build_filenamev([
+                GLib.get_user_state_dir(), 'norvi-office', 'desktop'])}`;
+            if (!new TextDecoder().decode(bytes).split('\0').includes(required))
+                throw new Error('Caller is not an opted-in desktop Office process');
+            for (const [key, item] of this.nativeReports) {
+                if (item.pid === pid && item.sender !== sender)
+                    this.nativeReports.delete(key);
+            }
+            const key = `${pid}:${handle}`;
+            if (!this.nativeReports.has(key) && this.nativeReports.size >= 128)
+                this.nativeReports.delete(this.nativeReports.keys().next().value);
+            const valid = joinStart >= 0 && joinStart < join && join < edge && edge < height / 2;
+            this.nativeReports.set(key, {pid, sender, title, size: [width, height],
+                edge: valid ? edge : 0, join: valid ? join : 0, join_start: valid ? joinStart : 0,
+                at: GLib.get_monotonic_time()});
+            this.scan();
+            this.syncAll();
+            invocation.return_value(new GLib.Variant('(b)', [true]));
+        } catch (_error) {
+            invocation.return_value(new GLib.Variant('(b)', [false]));
+        }
+    }
+
     PrepareChromeAsync([y], invocation) {
         // Authenticate the process through the private bus. The caller cannot
         // request a pause in another process by supplying a PID or window title.
@@ -162,6 +208,10 @@ export default class NorviOffice extends Extension {
         for (const entry of this.entries.values()) {
             if (entry.window.get_pid() !== pid)
                 continue;
+            // This client acknowledges its new boundary inside GTK's draw
+            // signal, before committing the corresponding Wayland buffer.
+            if (entry.direct)
+                continue;
             if (y !== -1 && !(y >= entry.join && y < entry.inputEdge))
                 continue;
             if (focused?.get_pid() === pid && focused.get_window_type() === Meta.WindowType.NORMAL &&
@@ -179,6 +229,7 @@ export default class NorviOffice extends Extension {
         return JSON.stringify([...this.entries.values()].map(entry => ({
             app: moduleFor(entry.window), pid: entry.window.get_pid(),
             window_id: entry.window.get_stable_sequence(), title: entry.window.get_title(), enabled: entry.mask.enabled,
+            geometry_source: entry.direct ? 'native-render' : 'accessibility',
             edge: entry.edge, reason: entry.reason, transitionCount: entry.transitionCount,
             frame: box(entry.window.get_frame_rect()), buffer: box(entry.window.get_buffer_rect()),
         })));
@@ -236,6 +287,16 @@ export default class NorviOffice extends Extension {
     }
 
     syncAll() {
+        const now = GLib.get_monotonic_time();
+        const activePids = new Set([...this.nativeReports.values()].filter(item =>
+            now - item.at < MAX_AGE).map(item => item.pid));
+        // Every live header in a client shares its GTK main loop and heartbeat.
+        // If that loop is alive, expired sibling rows belong to closed headers.
+        // If the whole client stalls, retain its stale rows so all fail opaque.
+        for (const [key, item] of this.nativeReports) {
+            if (now - item.at >= MAX_AGE && activePids.has(item.pid))
+                this.nativeReports.delete(key);
+        }
         for (const entry of this.entries.values())
             entry.sync();
     }
@@ -266,8 +327,8 @@ export default class NorviOffice extends Extension {
             return;
         // On the real desktop, touch only frames measured by the launch-scoped
         // native-header bridge. Ordinary upstream Office windows stay intact.
-        if (this.nativeHost && !this.geometry.some(item => item.pid === window.get_pid() &&
-            item.title === window.get_title()))
+        if (this.nativeHost && ![...this.geometry, ...this.nativeReports.values()].some(item =>
+            item.pid === window.get_pid() && item.title === window.get_title()))
             return;
 
         const blur = new St.Widget({reactive: false, name: 'norvi-office-backdrop'});
@@ -283,7 +344,7 @@ export default class NorviOffice extends Extension {
         actor.insert_child_below(blur, surface);
         surface.add_effect_with_name('norvi-office-mask', mask);
         const entry = {blur, mask, surface, guard, window, edge: null, reason: 'geometry',
-            blockedUntil: 0, transitionCount: 0, inputEdge: 0, join: 0};
+            blockedUntil: 0, transitionCount: 0, inputEdge: 0, join: 0, direct: false};
         this.entries.set(actor, entry);
         const sync = () => {
             const buffer = window.get_buffer_rect();
@@ -293,6 +354,15 @@ export default class NorviOffice extends Extension {
                 item.size[0] === buffer.width && item.size[1] === buffer.height);
             const fresh = GLib.get_monotonic_time() - this.reportAt < MAX_AGE;
             let geometry = fresh ? selectGeometry(matches) : null;
+            const native = [...this.nativeReports.values()].filter(item => item.pid === window.get_pid() &&
+                item.title === window.get_title() && item.size[0] === buffer.width && item.size[1] === buffer.height);
+            if (native.length) {
+                entry.direct = true;
+                geometry = native.every(item => GLib.get_monotonic_time() - item.at < MAX_AGE)
+                    ? selectGeometry(native) : null;
+            } else if (entry.direct) {
+                geometry = null;
+            }
             const dark = this.interfaceSettings.get_string('color-scheme') === 'prefer-dark' &&
                 !this.contrastSettings.get_boolean('high-contrast') &&
                 !/highcontrast/i.test(this.interfaceSettings.get_string('gtk-theme'));
@@ -301,7 +371,7 @@ export default class NorviOffice extends Extension {
             const top = rect.y - buffer.y;
             const valid = geometry && geometry.edge > top &&
                 geometry.join > top && geometry.edge < top + rect.height;
-            const settling = this.reportAt <= entry.blockedUntil && entry.blockedUntil > 0;
+            const settling = !entry.direct && this.reportAt <= entry.blockedUntil && entry.blockedUntil > 0;
             if (valid && !settling) {
                 entry.inputEdge = geometry.edge;
                 entry.join = geometry.join;

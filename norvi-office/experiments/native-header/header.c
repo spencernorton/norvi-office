@@ -15,6 +15,10 @@ typedef struct {
     guint timer;
     gboolean destroyed, describing, activating;
     gchar *identity, *menu_signature;
+    gchar *reported_title;
+    gint geometry[5];
+    gint64 reported_at;
+    gboolean geometry_ack;
 } Header;
 
 static const char *commands[] = {"open", "save", "undo", "redo", "settings"};
@@ -46,6 +50,7 @@ static GtkWidget *study_icon(guint index) {
 static GSettings *popup_settings, *interface_settings, *contrast_settings;
 static const char *token;
 static const char *broker_name;
+static gboolean native_desktop;
 
 static Header *header_ref(Header *header) {
     g_atomic_int_inc(&header->refs);
@@ -62,6 +67,7 @@ static void header_unref(gpointer data) {
     g_clear_object(&header->actions);
     g_free(header->identity);
     g_free(header->menu_signature);
+    g_free(header->reported_title);
     g_free(header);
 }
 
@@ -91,6 +97,140 @@ static guint64 window_handle(Header *header) {
     if (!GDK_IS_WAYLAND_DISPLAY(gdk_window_get_display(surface)))
         return 0;
     return (guint64)(guintptr)gdk_wayland_window_get_wl_surface(surface);
+}
+
+typedef struct { gint x, y, width, height; } ChromeRect;
+
+static gboolean chrome_rect(AtkObject *object, ChromeRect *rect) {
+    if (!object || !ATK_IS_COMPONENT(object))
+        return FALSE;
+    AtkStateSet *states = atk_object_ref_state_set(object);
+    if (!states)
+        return FALSE;
+    gboolean showing = atk_state_set_contains_state(states, ATK_STATE_VISIBLE) &&
+        atk_state_set_contains_state(states, ATK_STATE_SHOWING);
+    g_object_unref(states);
+    if (!showing)
+        return FALSE;
+    atk_component_get_extents(ATK_COMPONENT(object), &rect->x, &rect->y,
+        &rect->width, &rect->height, ATK_XY_WINDOW);
+    return rect->x >= 0 && rect->y >= 0 && rect->width > 0 && rect->height > 0;
+}
+
+/* Only inspect chrome containers. Never walk a document, table or its cells. */
+static void chrome_roots(AtkObject *object, guint depth, AtkObject **found, guint *count) {
+    AtkRole role = atk_object_get_role(object);
+    if (role == ATK_ROLE_ROOT_PANE) {
+        (*count)++;
+        if (!*found)
+            *found = g_object_ref(object);
+        return;
+    }
+    if (depth >= 4 || (role != ATK_ROLE_FRAME && role != ATK_ROLE_PANEL && role != ATK_ROLE_FILLER))
+        return;
+    gint children = atk_object_get_n_accessible_children(object);
+    if (children < 0 || children > 64) {
+        *count = 2;
+        return;
+    }
+    for (gint i = 0; i < children; i++) {
+        AtkObject *child = atk_object_ref_accessible_child(object, i);
+        if (child) {
+            chrome_roots(child, depth + 1, found, count);
+            g_object_unref(child);
+        }
+    }
+}
+
+static gboolean native_geometry(Header *header, gint geometry[5]) {
+    AtkObject *frame = gtk_widget_get_accessible(header->window);
+    AtkObject *pane = NULL;
+    guint roots = 0, bodies = 0;
+    ChromeRect bounds = {0}, root = {0}, body = {0}, bar = {0};
+    if (!frame || !chrome_rect(frame, &bounds))
+        return FALSE;
+    chrome_roots(frame, 0, &pane, &roots);
+    gboolean valid = roots == 1 && pane && chrome_rect(pane, &root);
+    if (valid) {
+        gint children = atk_object_get_n_accessible_children(pane);
+        valid = children >= 0 && children <= 64;
+        for (gint i = 0; valid && i < children; i++) {
+            AtkObject *child = atk_object_ref_accessible_child(pane, i);
+            ChromeRect box;
+            if (child && atk_object_get_role(child) == ATK_ROLE_PANEL && chrome_rect(child, &box) &&
+                    box.width > root.width / 2 && box.height > root.height / 2) {
+                body = box;
+                bodies++;
+            }
+            g_clear_object(&child);
+        }
+        valid = valid && bodies == 1 && root.y < body.y && body.y < bounds.height / 2 &&
+            root.x <= body.x && body.x + body.width <= root.x + root.width &&
+            body.y + body.height <= root.y + root.height &&
+            chrome_rect(gtk_widget_get_accessible(header->bar), &bar);
+    }
+    g_clear_object(&pane);
+    if (!valid)
+        return FALSE;
+    geometry[0] = bounds.width;
+    geometry[1] = bounds.height;
+    geometry[2] = body.y - 1;
+    geometry[3] = MIN(bar.y + bar.height + 3, geometry[2] - 1);
+    geometry[4] = MAX(0, bar.y + bar.height - 1);
+    return geometry[4] < geometry[3] && geometry[3] < geometry[2];
+}
+
+static void report_native_geometry(Header *header) {
+    if (!native_desktop || header->destroyed || !header->bus || !window_handle(header))
+        return;
+    gint measured[5] = {gtk_widget_get_allocated_width(header->window),
+        gtk_widget_get_allocated_height(header->window), 0, 0, 0};
+    if (!native_geometry(header, measured))
+        measured[2] = measured[3] = measured[4] = 0;
+    const gchar *title = gtk_window_get_title(GTK_WINDOW(header->window));
+    if (!title)
+        title = "";
+    gint64 now = g_get_monotonic_time();
+    gboolean changed = memcmp(measured, header->geometry, sizeof(measured)) != 0 ||
+        g_strcmp0(title, header->reported_title) != 0;
+    if (now - header->reported_at < 250000 &&
+            !changed)
+        return;
+    GVariant *reply = g_dbus_connection_call_sync(header->bus, "org.gnome.Shell",
+        "/dev/norvi/OfficeGeometry", "dev.norvi.OfficeGeometry", "ReportNative",
+        g_variant_new("(tsiiiii)", window_handle(header), title,
+            measured[0], measured[1], measured[2], measured[3], measured[4]),
+        G_VARIANT_TYPE("(b)"), G_DBUS_CALL_FLAGS_NO_AUTO_START, 100, NULL, NULL);
+    gboolean acknowledged = FALSE;
+    if (reply)
+        g_variant_get(reply, "(b)", &acknowledged);
+    g_clear_pointer(&reply, g_variant_unref);
+    if (changed || acknowledged != header->geometry_ack) {
+        gchar *name = g_strdup_printf("geometry-%s.json", header->identity);
+        gchar *path = g_build_filename(g_getenv("NORVI_OFFICE_SESSION_DIR"), name, NULL);
+        gchar *receipt = g_strdup_printf("{\"pid\":%u,\"handle\":%" G_GUINT64_FORMAT
+            ",\"width\":%d,\"height\":%d,\"edge\":%d,\"join\":%d,\"join_start\":%d,\"render_ack\":%s}\n",
+            (guint)getpid(), window_handle(header), measured[0], measured[1], measured[2],
+            measured[3], measured[4], acknowledged ? "true" : "false");
+        g_file_set_contents(path, receipt, -1, NULL);
+        g_free(receipt);
+        g_free(path);
+        g_free(name);
+    }
+    header->geometry_ack = acknowledged;
+    memcpy(header->geometry, measured, sizeof(measured));
+    g_free(header->reported_title);
+    header->reported_title = g_strdup(title);
+    header->reported_at = now;
+}
+
+static gboolean chrome_draw(GtkWidget *widget, cairo_t *context, gpointer data) {
+    (void)widget;
+    (void)context;
+    /* GTK finishes the draw signal before committing its new Wayland buffer.
+     * Ack the measured boundary first; tab input need not blank the ribbon. */
+    report_native_geometry(data);
+    return FALSE;
 }
 
 static Request *request_new(Header *header) {
@@ -261,6 +401,7 @@ static gboolean refresh(gpointer data) {
         return G_SOURCE_REMOVE;
     if (!gtk_widget_get_realized(header->window))
         return G_SOURCE_CONTINUE;
+    report_native_geometry(header);
     GdkWindow *surface = gtk_widget_get_window(header->window);
     /* Read the pinned GTK backend's exported menu, never its private structs. */
     GMenuModel *model = g_object_get_data(G_OBJECT(surface), "g-lo-menubar");
@@ -400,6 +541,7 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
     g_signal_connect(window, "key-press-event", G_CALLBACK(header_key), header);
     gtk_widget_show_all(header->bar);
     header->timer = g_timeout_add(350, refresh, header);
+    g_signal_connect_after(window, "draw", G_CALLBACK(chrome_draw), header);
     return TRUE;
 }
 
@@ -478,6 +620,7 @@ G_MODULE_EXPORT void gtk_module_init(gint *argc, gchar ***argv) {
     g_free(marker);
     if (!isolated && !desktop)
         return;
+    native_desktop = desktop && !isolated;
     broker_name = g_getenv("NORVI_OFFICE_HEADER_BUS");
     if (!broker_name)
         broker_name = "dev.norvi.OfficeHeader";

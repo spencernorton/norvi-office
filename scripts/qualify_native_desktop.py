@@ -10,13 +10,16 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "norvi-office/experiments/native-header"))
 from uno_utils import connect, prop  # noqa: E402
-from geometry_relay import Atspi, geometry, header_bars  # noqa: E402
+from geometry_relay import Atspi, GLib, geometry, header_bars  # noqa: E402
 
 
 def wait(check, message):
     until = time.monotonic() + 12
     while time.monotonic() < until:
-        value = check()
+        try:
+            value = check()
+        except GLib.Error:
+            value = None
         if value:
             return value
         time.sleep(.1)
