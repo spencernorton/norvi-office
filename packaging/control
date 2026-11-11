@@ -1,0 +1,13 @@
+Package: norvi-office
+Source: norvi-office
+Version: @VERSION@
+Section: editors
+Priority: optional
+Architecture: amd64
+Maintainer: NorviTech <apt@globalentry.systems>
+Depends: python3 (>= 3.11), python3-gi, python3-gi-cairo, python3-cairo, gir1.2-gtk-3.0, gir1.2-atspi-2.0, python3-uno, libreoffice-core (>= 4:26.2), libreoffice-gtk3, libreoffice-style-sifr, libreoffice-writer, libreoffice-calc, libreoffice-impress, libreoffice-draw, libreoffice-base, libreoffice-math, libgtk-3-0t64, libglib2.0-0t64, desktop-file-utils
+Homepage: https://github.com/spencernorton/norvi-office
+Description: Norvi Office presentation and integration for LibreOffice
+ Approved startup and icon presentation, configuration extensions and an
+ experimental native glass UI qualification bundle. Official LibreOffice
+ packages remain independently updatable. Glass is not enabled by default.

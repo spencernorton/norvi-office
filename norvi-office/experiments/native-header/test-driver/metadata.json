@@ -1,0 +1,7 @@
+{
+  "uuid": "norvi-office-test@norvi.local",
+  "name": "Norvi Office isolated capture driver",
+  "description": "Test fixture for a private headless Shell instance.",
+  "shell-version": ["50"],
+  "version": 1
+}

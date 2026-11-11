@@ -1,0 +1,12 @@
+name: Official upstream compatibility
+on:
+  schedule:
+    - cron: '17 9 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  current-official-runtime:
+    uses: ./.github/workflows/ci.yml
+    permissions:
+      contents: read

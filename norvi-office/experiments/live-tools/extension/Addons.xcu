@@ -1,0 +1,67 @@
+<?xml version='1.0' encoding='utf-8'?>
+<oor:component-data xmlns:oor="http://openoffice.org/2001/registry" oor:name="Addons" oor:package="org.openoffice.Office">
+  <node oor:name="AddonUI">
+    <node oor:name="AddonMenu">
+      <node oor:name="dev.norvi.LiveTools.share" oor:op="replace">
+        <prop oor:name="URL">
+          <value>dev.norvi.office:share</value>
+        </prop>
+        <prop oor:name="Title">
+          <value xml:lang="en-US">Share Document with Helios…</value>
+        </prop>
+        <prop oor:name="Target">
+          <value>_self</value>
+        </prop>
+        <prop oor:name="Context">
+          <value>com.sun.star.sheet.SpreadsheetDocument,com.sun.star.text.TextDocument</value>
+        </prop>
+      </node>
+      <node oor:name="dev.norvi.LiveTools.stop" oor:op="replace">
+        <prop oor:name="URL">
+          <value>dev.norvi.office:stop</value>
+        </prop>
+        <prop oor:name="Title">
+          <value xml:lang="en-US">Stop Document Sharing</value>
+        </prop>
+        <prop oor:name="Target">
+          <value>_self</value>
+        </prop>
+        <prop oor:name="Context">
+          <value>com.sun.star.sheet.SpreadsheetDocument,com.sun.star.text.TextDocument</value>
+        </prop>
+      </node>
+    </node>
+    <node oor:name="OfficeNotebookBar">
+      <node oor:name="dev.norvi.LiveTools" oor:op="replace">
+        <node oor:name="dev.norvi.LiveTools.share" oor:op="replace">
+          <prop oor:name="URL">
+            <value>dev.norvi.office:share</value>
+          </prop>
+          <prop oor:name="Title">
+            <value xml:lang="en-US">Share Document with Helios…</value>
+          </prop>
+          <prop oor:name="Target">
+            <value>_self</value>
+          </prop>
+          <prop oor:name="Context">
+            <value>com.sun.star.sheet.SpreadsheetDocument,com.sun.star.text.TextDocument</value>
+          </prop>
+        </node>
+        <node oor:name="dev.norvi.LiveTools.stop" oor:op="replace">
+          <prop oor:name="URL">
+            <value>dev.norvi.office:stop</value>
+          </prop>
+          <prop oor:name="Title">
+            <value xml:lang="en-US">Stop Document Sharing</value>
+          </prop>
+          <prop oor:name="Target">
+            <value>_self</value>
+          </prop>
+          <prop oor:name="Context">
+            <value>com.sun.star.sheet.SpreadsheetDocument,com.sun.star.text.TextDocument</value>
+          </prop>
+        </node>
+      </node>
+    </node>
+  </node>
+</oor:component-data>

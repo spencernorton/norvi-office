@@ -1,0 +1,508 @@
+[
+  {
+    "depth": 0,
+    "role": "frame",
+    "name": "Untitled 1 \u2014 LibreOffice Calc",
+    "rect": [
+      0,
+      0,
+      1352,
+      787
+    ]
+  },
+  {
+    "depth": 1,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      26,
+      23,
+      1300,
+      37
+    ]
+  },
+  {
+    "depth": 2,
+    "role": "filler",
+    "name": "",
+    "rect": [
+      1226,
+      27,
+      96,
+      28
+    ]
+  },
+  {
+    "depth": 3,
+    "role": "button",
+    "name": "Minimize",
+    "rect": [
+      1226,
+      27,
+      28,
+      28
+    ]
+  },
+  {
+    "depth": 3,
+    "role": "button",
+    "name": "Maximize",
+    "rect": [
+      1260,
+      27,
+      28,
+      28
+    ]
+  },
+  {
+    "depth": 3,
+    "role": "button",
+    "name": "Close",
+    "rect": [
+      1294,
+      27,
+      28,
+      28
+    ]
+  },
+  {
+    "depth": 2,
+    "role": "filler",
+    "name": "",
+    "rect": [
+      565,
+      32,
+      221,
+      18
+    ]
+  },
+  {
+    "depth": 3,
+    "role": "label",
+    "name": "Untitled 1 \u2014 LibreOffice Calc",
+    "rect": [
+      565,
+      32,
+      221,
+      18
+    ]
+  },
+  {
+    "depth": 1,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      26,
+      60,
+      1300,
+      698
+    ]
+  },
+  {
+    "depth": 2,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      26,
+      60,
+      1300,
+      698
+    ]
+  },
+  {
+    "depth": 3,
+    "role": "root pane",
+    "name": "Untitled 1 \u2014 LibreOffice Calc",
+    "rect": [
+      26,
+      60,
+      1300,
+      698
+    ]
+  },
+  {
+    "depth": 4,
+    "role": "menu bar",
+    "name": "",
+    "rect": [
+      26,
+      60,
+      1300,
+      0
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "menu",
+    "name": "File",
+    "rect": [
+      26,
+      60,
+      40,
+      22
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "menu",
+    "name": "Edit",
+    "rect": [
+      66,
+      60,
+      43,
+      22
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "menu",
+    "name": "View",
+    "rect": [
+      109,
+      60,
+      50,
+      22
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "menu",
+    "name": "Insert",
+    "rect": [
+      159,
+      60,
+      56,
+      22
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "menu",
+    "name": "Format",
+    "rect": [
+      215,
+      60,
+      66,
+      22
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "menu",
+    "name": "Styles",
+    "rect": [
+      281,
+      60,
+      56,
+      22
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "menu",
+    "name": "Sheet",
+    "rect": [
+      337,
+      60,
+      55,
+      22
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "menu",
+    "name": "Data",
+    "rect": [
+      392,
+      60,
+      49,
+      22
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "menu",
+    "name": "Tools",
+    "rect": [
+      441,
+      60,
+      53,
+      22
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "menu",
+    "name": "Window",
+    "rect": [
+      494,
+      60,
+      73,
+      22
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "menu",
+    "name": "Help",
+    "rect": [
+      567,
+      60,
+      47,
+      22
+    ]
+  },
+  {
+    "depth": 4,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      26,
+      177,
+      1300,
+      557
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      26,
+      219,
+      1241,
+      515
+    ]
+  },
+  {
+    "depth": 6,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      1255,
+      224,
+      12,
+      473
+    ]
+  },
+  {
+    "depth": 7,
+    "role": "filler",
+    "name": "",
+    "rect": [
+      1255,
+      224,
+      12,
+      473
+    ]
+  },
+  {
+    "depth": 6,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      26,
+      219,
+      37,
+      21
+    ]
+  },
+  {
+    "depth": 6,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      63,
+      219,
+      1192,
+      21
+    ]
+  },
+  {
+    "depth": 6,
+    "role": "split pane",
+    "name": "",
+    "rect": [
+      1255,
+      219,
+      12,
+      5
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "split pane",
+    "name": "",
+    "rect": [
+      1267,
+      177,
+      59,
+      557
+    ]
+  },
+  {
+    "depth": 6,
+    "role": "panel",
+    "name": "Properties",
+    "rect": [
+      1276,
+      179,
+      48,
+      553
+    ]
+  },
+  {
+    "depth": 7,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      1276,
+      179,
+      48,
+      553
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "tool bar",
+    "name": "Formula Tool Bar",
+    "rect": [
+      26,
+      177,
+      1241,
+      42
+    ]
+  },
+  {
+    "depth": 6,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      30,
+      179,
+      173,
+      34
+    ]
+  },
+  {
+    "depth": 7,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      30,
+      179,
+      173,
+      34
+    ]
+  },
+  {
+    "depth": 6,
+    "role": "separator",
+    "name": "",
+    "rect": [
+      203,
+      182,
+      8,
+      28
+    ]
+  },
+  {
+    "depth": 6,
+    "role": "button",
+    "name": "Function Wizard",
+    "rect": [
+      211,
+      182,
+      26,
+      28
+    ]
+  },
+  {
+    "depth": 6,
+    "role": "button",
+    "name": "Select Function",
+    "rect": [
+      237,
+      182,
+      37,
+      28
+    ]
+  },
+  {
+    "depth": 6,
+    "role": "button",
+    "name": "Formula",
+    "rect": [
+      274,
+      182,
+      26,
+      28
+    ]
+  },
+  {
+    "depth": 6,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      300,
+      184,
+      1102,
+      25
+    ]
+  },
+  {
+    "depth": 7,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      300,
+      184,
+      962,
+      25
+    ]
+  },
+  {
+    "depth": 5,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      26,
+      219,
+      1241,
+      0
+    ]
+  },
+  {
+    "depth": 4,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      26,
+      177,
+      1300,
+      0
+    ]
+  },
+  {
+    "depth": 4,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      26,
+      177,
+      0,
+      557
+    ]
+  },
+  {
+    "depth": 4,
+    "role": "panel",
+    "name": "",
+    "rect": [
+      1326,
+      177,
+      0,
+      557
+    ]
+  }
+]

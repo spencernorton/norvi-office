@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Norvi Glass — LibreOffice UI preset (configuration data).
+
+  Token sources (do not re-derive):
+    NorviOS design tokens, consumed by the GTK theme.
+    ~/.config/gtk-3.0/gtk.css / ~/.config/gtk-4.0/gtk.css  (live GTK consumers)
+    Yaru-purple-dark @define-color theme_selected_bg_color #7460d4
+
+  Hard limits honoured here:
+    * Notebookbar tab contents cannot be customised (TDF help, View → User
+      Interface). This file selects the Tabbed Compact variant
+      (notebookbar_compact.ui) and leaves its tabs stock.
+    * LibreOffice 26.2 ships no AccentColor configuration property; purple comes from
+      the GTK selection colour. Sifr keeps command icons mostly neutral.
+
+  Reversible: `unopkg remove dev.norvi.NorviGlass` restores prior behaviour.
+-->
+<oor:items xmlns:oor="http://openoffice.org/2001/registry"
+           xmlns:xs="http://www.w3.org/2001/XMLSchema"
+           xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+
+    <!-- Dark SVG for NorviOS. The matching light SVG is also available
+         under Tools → Options → LibreOffice → Appearance. -->
+    <item oor:path="/org.openoffice.Office.Common/Misc">
+        <prop oor:name="SymbolStyle" oor:op="fuse">
+            <value>sifr_dark_svg</value>
+        </prop>
+    </item>
+
+    <!-- Follow the system light/dark preference (NorviOS glass is dark-first). -->
+    <item oor:path="/org.openoffice.Office.Common/Appearance">
+        <prop oor:name="ApplicationAppearance" oor:op="fuse">
+            <value>0</value>
+        </prop>
+    </item>
+
+    <!-- Retain the v0.1 layout intent. The tested profiles already open
+         in this layout; a layout change from these pins is unverified. -->
+    <item oor:path="/org.openoffice.Office.UI/ToolbarMode">
+        <prop oor:name="ActiveWriter" oor:op="fuse">
+            <value>notebookbar_compact.ui</value>
+        </prop>
+        <prop oor:name="ActiveCalc" oor:op="fuse">
+            <value>notebookbar_compact.ui</value>
+        </prop>
+        <prop oor:name="ActiveImpress" oor:op="fuse">
+            <value>notebookbar_compact.ui</value>
+        </prop>
+        <prop oor:name="ActiveDraw" oor:op="fuse">
+            <value>notebookbar_compact.ui</value>
+        </prop>
+    </item>
+
+    <!-- Stock chrome polish: suppress first-run cruft on fresh profiles. -->
+    <item oor:path="/org.openoffice.Office.Common/Misc">
+        <prop oor:name="ShowTipOfTheDay" oor:op="fuse">
+            <value>false</value>
+        </prop>
+        <prop oor:name="FirstRun" oor:op="fuse">
+            <value>false</value>
+        </prop>
+    </item>
+
+</oor:items>

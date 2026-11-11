@@ -1,0 +1,27 @@
+{
+  "schema": 1,
+  "ubuntu": [
+    "26.04"
+  ],
+  "architecture": [
+    "amd64"
+  ],
+  "upstream_engine": "official Ubuntu packages",
+  "engine_pins": false,
+  "supported_runtime": [
+    "startup",
+    "icon",
+    "explicit user shortcut integration"
+  ],
+  "experimental_native_adapter": {
+    "enabled_by_default": false,
+    "libreoffice_versions": [
+      "26.2.6.3"
+    ],
+    "gnome_shell_versions": [
+      "50"
+    ],
+    "unknown_version_behavior": "leave the unmodified upstream UI active"
+  },
+  "stable_promotion": "explicit desktop qualification review"
+}
