@@ -1,5 +1,16 @@
 # Journal
 
+## 2026-11-11 — Recover desktop presentation helpers
+
+- Reused desktop sessions now verify their existing profile service and recover
+  missing presentation helpers without closing documents. Recorded helper
+  identity includes its session, script and channel rather than a PID alone.
+- New profiles also receive distinct header bus names; existing desktop
+  sessions retain their original service names until closed normally.
+- Thirteen Mac-compatible regressions pass; five Linux integration checks are
+  skipped on the development host. Native build and installed acceptance stay
+  pending while host maintenance is in progress. No host runtime changed.
+
 ## 2026-11-11 — Isolate native CI dependency resolution
 
 - Give the disposable native job explicit DNS resolvers after repeated archive

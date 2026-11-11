@@ -28,6 +28,10 @@ def service_pipe(profile, stage="runtime"):
     return "norvi_" + stage + "_" + sha256(profile.resolve().as_uri().encode()).hexdigest()[:20]
 
 
+def service_bus(profile):
+    return "dev.norvi.OfficeHeader.Desktop.p" + sha256(profile.resolve().as_uri().encode()).hexdigest()[:20]
+
+
 def qualified():
     contract = json.loads((SHARE / "compatibility.json").read_text())["experimental_native_adapter"]
     office = subprocess.check_output(["libreoffice", "--version"], text=True).split()[1]
@@ -98,6 +102,43 @@ def running(root, profile):
         ("-env:UserInstallation=" + profile.as_uri()).encode() in process.split(b"\0")
 
 
+HELPERS = {"broker": "actions.py", "geometry": "geometry_relay.py"}
+
+
+def helper_alive(root, record, role, proc=Path("/proc")):
+    """A reused PID is not proof that our helper is still running."""
+    try:
+        pid = record[role]
+        if not isinstance(pid, int) or isinstance(pid, bool) or pid <= 0:
+            return False
+        process = proc / str(pid)
+        if process.stat().st_uid != os.getuid():
+            return False
+        arguments = process.joinpath("cmdline").read_bytes().split(b"\0")
+        values = dict(item.split(b"=", 1) for item in process.joinpath("environ").read_bytes().split(b"\0") if b"=" in item)
+        return values.get(b"NORVI_OFFICE_SESSION_DIR") == str(root).encode() and \
+            (role != "broker" or str(record.get("pipe", "")).encode() in arguments) and any(
+            Path(os.fsdecode(arg)).name == HELPERS[role] and
+            Path(os.fsdecode(arg)).parent.name == "native-header" for arg in arguments if arg)
+    except (KeyError, OSError):
+        return False
+
+
+def ensure_helpers(root, record, env):
+    """Recover failed presentation helpers without closing any Office document."""
+    for role, script in HELPERS.items():
+        if helper_alive(root, record, role):
+            continue
+        arguments = [record["pipe"]] if role == "broker" else []
+        with (root / (role + ".log")).open("a") as log:
+            process = subprocess.Popen([sys.executable, str(HEADER / script), *arguments], env=env, cwd=root,
+                                       stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+        record[role] = process.pid
+        # Retain each successfully created helper even if a later spawn fails.
+        (root / "running.json").write_text(json.dumps(record) + "\n")
+    return record
+
+
 def launch(app, files):
     if not qualified():
         subprocess.Popen(command(app, files), start_new_session=True)
@@ -110,8 +151,7 @@ def launch(app, files):
         for key in ("NORVI_OFFICE_TEST_DIR", "GTK3_MODULES", "GTK_MODULES", "AT_SPI_BUS_ADDRESS"):
             env.pop(key, None)
         env.update(NORVI_OFFICE_SESSION_DIR=str(root), SAL_USE_VCLPLUGIN="gtk3", GDK_BACKEND="wayland",
-                   GTK_THEME="Yaru-purple-dark", NORVI_OFFICE_CALC_RIBBON="1",
-                   NORVI_OFFICE_HEADER_BUS="dev.norvi.OfficeHeader.Desktop")
+                   GTK_THEME="Yaru-purple-dark", NORVI_OFFICE_CALC_RIBBON="1")
         marker = root / "native-session.json"
         if not marker.exists():
             marker.write_text(json.dumps({"mode": "desktop", "token": secrets.token_hex(32)}) + "\n")
@@ -128,33 +168,33 @@ def launch(app, files):
             os.chdir(original)
         pipe = service_pipe(profile)
         env["NORVI_OFFICE_PROFILE_URI"] = profile.as_uri()
+        env["NORVI_OFFICE_HEADER_BUS"] = service_bus(profile)
         env["GTK3_MODULES"] = str(HERE.parents[3] / "lib/x86_64-linux-gnu/norvi-office/libnorvi-office-header.so")
         if running(root, profile):
+            record = json.loads((root / "running.json").read_text())
+            # A retained legacy runtime may have its older channel name. Verify
+            # the actual service before restarting helpers or opening documents.
+            connect(record["pipe"], profile)
+            env["NORVI_OFFICE_HEADER_BUS"] = record.get("bus", "dev.norvi.OfficeHeader.Desktop")
+            ensure_helpers(root, record, env)
             subprocess.Popen(command(app, files, profile), env=env, start_new_session=True)
             return {"native": True, "reused": True, "profile": str(profile)}
         if (root / "running.json").exists():
             previous = json.loads((root / "running.json").read_text())
             for role in ("broker", "geometry"):
                 try:
-                    pid = previous[role]
-                    process = Path(f"/proc/{pid}")
-                    values = dict(item.split(b"=", 1) for item in process.joinpath("environ").read_bytes().split(b"\0") if b"=" in item)
-                    if values.get(b"NORVI_OFFICE_SESSION_DIR") == str(root).encode() and process.joinpath("comm").read_text().strip() == "python3":
-                        os.kill(pid, signal.SIGTERM)
+                    if helper_alive(root, previous, role):
+                        os.kill(previous[role], signal.SIGTERM)
                 except (KeyError, FileNotFoundError, ProcessLookupError):
                     pass
         with (root / "office.log").open("w") as log:
             office = subprocess.Popen(command(app, files, profile, pipe), env=env, cwd=root,
                                       stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-        children = {}
-        for name, script, arguments in (("broker", "actions.py", [pipe]), ("geometry", "geometry_relay.py", [])):
-            with (root / (name + ".log")).open("w") as log:
-                process = subprocess.Popen([sys.executable, str(HEADER / script), *arguments], env=env, cwd=root,
-                                           stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
-            children[name] = process.pid
-        result = {"native": True, "office_group": office.pid, "profile": str(profile), "pipe": pipe, **children}
+        result = {"native": True, "office_group": office.pid, "profile": str(profile), "pipe": pipe,
+                  "bus": env["NORVI_OFFICE_HEADER_BUS"]}
         (root / "running.json").write_text(json.dumps(result) + "\n")
         context = connect(pipe, profile)
+        ensure_helpers(root, result, env)
         desktop = context.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", context)
         until = time.monotonic() + 20
         while time.monotonic() < until:
