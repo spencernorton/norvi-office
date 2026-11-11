@@ -1,6 +1,7 @@
 # Private preparation lane. Public release bytes are produced by release.yml.
 stages: [qualify]
 native_candidate:
+  interruptible: true
   stage: qualify
   image: ubuntu:26.04@sha256:f144425ff09be612d6d9ad965196e9cdc23dae1f42110a8a11a3e9a8198759f7
   tags: [amd64-builder]

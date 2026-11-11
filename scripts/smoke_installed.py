@@ -34,16 +34,22 @@ for app in ('writer', 'calc'):
         result = subprocess.run([str(program), '--profile', str(profile), '--app', app, files[app]], timeout=12)
         assert result.returncode == 0
         assert time.monotonic() - started < 7.5, 'Readiness fell back to timeout'
-        desktop = Atspi.get_desktop(0)
+        until = time.monotonic() + 5
         visible = []
-        for index in range(desktop.get_child_count()):
-            item = desktop.get_child_at_index(index)
-            if item is not None and item.get_name() == 'soffice':
-                for child in range(item.get_child_count()):
-                    window = item.get_child_at_index(child)
-                    if window and window.get_role() == Atspi.Role.FRAME:
-                        if window.get_state_set().contains(Atspi.StateType.SHOWING):
-                            visible.append(window.get_name() or '')
+        while time.monotonic() < until:
+            desktop = Atspi.get_desktop(0)
+            visible = []
+            for index in range(desktop.get_child_count()):
+                item = desktop.get_child_at_index(index)
+                if item is not None and item.get_name() == 'soffice':
+                    for child in range(item.get_child_count()):
+                        window = item.get_child_at_index(child)
+                        if window and window.get_role() == Atspi.Role.FRAME:
+                            if window.get_state_set().contains(Atspi.StateType.SHOWING):
+                                visible.append(window.get_name() or '')
+            if any(Path(files[app]).stem in title for title in visible):
+                break
+            time.sleep(0.05)
         assert any(Path(files[app]).stem in title for title in visible), visible
         print('Installed ' + app + ' startup passed', flush=True)
     finally:
