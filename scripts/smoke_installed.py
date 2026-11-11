@@ -21,7 +21,13 @@ spec = importlib.util.spec_from_file_location('installed_fixtures', source)
 fixtures = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fixtures)
 work = Path(tempfile.mkdtemp(prefix='office-installed-'))
-files = fixtures.make(work)
+try:
+    files = fixtures.make(work)
+except Exception:
+    log = work / 'fixtures.log'
+    if log.exists():
+        print(log.read_text()[-4000:], file=sys.stderr)
+    raise
 Atspi.set_timeout(150, 150)
 for app in ('writer', 'calc'):
     profile = work / ('profile-' + app)

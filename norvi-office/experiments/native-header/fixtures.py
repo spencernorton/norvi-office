@@ -42,7 +42,8 @@ def make(root):
     office = subprocess.Popen([
         "soffice", f"-env:UserInstallation={(root / 'fixture-profile').as_uri()}",
         "--headless", "--norestore", f"--accept=pipe,name={pipe};urp;",
-    ], stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+    ], stdout=log, stderr=subprocess.STDOUT, start_new_session=True,
+       env={**os.environ, "SAL_USE_VCLPLUGIN": "svp"})
     try:
         ctx = connect(pipe)
         manager = ctx.ServiceManager

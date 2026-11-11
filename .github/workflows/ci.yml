@@ -42,23 +42,11 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Source and update/removal contract
+      - name: Qualify the exact candidate as an unprivileged desktop user
         run: |
-          git config --global --add safe.directory "$GITHUB_WORKSPACE"
-          scripts/check.sh
-          bash norvi-office/experiments/native-header/build.sh /tmp/norvi-office-tests/ci-build
-          python3 -m unittest discover -s norvi-office/experiments/wayland-glass -p test_geometry.py -v
-      - name: Build the reproducible candidate
-        run: |
-          python3 scripts/build.py --output out/candidate
-          python3 scripts/build.py --output out/reproduction
-          cmp out/candidate/*.deb out/reproduction/*.deb
-      - name: Qualify the exact installed payload outside the checkout
-        run: |
-          bash scripts/qualify_package.sh out/candidate >out/installed-runtime.log 2>&1
-          python3 scripts/qualify_lifecycle.py out/candidate/*.deb
-          python3 norvi-office/experiments/live-tools/qualify_formats.py >out/format-contract.log 2>&1
-          python3 scripts/upstream_report.py out/upstream.json
+          useradd --create-home office-test
+          chown -R office-test "$GITHUB_WORKSPACE"
+          runuser -u office-test -- bash scripts/native_ci.sh
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: norvi-office-debian-candidate
