@@ -14,13 +14,13 @@ import time
 HERE = Path(__file__).resolve().parent
 
 
-def outer(candidate):
+def outer(candidate, app):
     parent = Path("/tmp/norvi-office-tests")
     parent.mkdir(exist_ok=True)
     output = Path(tempfile.mkdtemp(prefix="capture.native-render-", dir=parent))
     runtime = Path(tempfile.mkdtemp(prefix="office-render-", dir=f"/run/user/{os.getuid()}"))
     env = dict(os.environ, XDG_RUNTIME_DIR=str(runtime), NORVI_OFFICE_TEST_DIR=str(output),
-               LIBGL_ALWAYS_SOFTWARE="1", GIO_USE_VFS="local")
+               LIBGL_ALWAYS_SOFTWARE="1", GIO_USE_VFS="local", NORVI_OFFICE_QUAL_APP=app)
     for key in ("DISPLAY", "WAYLAND_DISPLAY", "DBUS_SESSION_BUS_ADDRESS", "AT_SPI_BUS_ADDRESS", "GTK3_MODULES"):
         env.pop(key, None)
     for key, name in (("XDG_CONFIG_HOME", "config"), ("XDG_DATA_HOME", "data"),
@@ -44,6 +44,7 @@ def inside(output):
     from gi.repository import Gio, GLib
     from PIL import Image, ImageChops
     connection = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    app = os.environ.get("NORVI_OFFICE_QUAL_APP", "calc")
 
     def call(interface, method, signature=None, *values):
         parameters = GLib.Variant(signature, values) if signature else None
@@ -51,7 +52,7 @@ def inside(output):
             "dev.norvi." + interface, method, parameters, None, 0, 5000, None).unpack()
 
     def state():
-        return next((item for item in json.loads(call("OfficeGeometry", "State")[0]) if item["app"] == "calc"), None)
+        return next((item for item in json.loads(call("OfficeGeometry", "State")[0]) if item["app"] == app), None)
 
     def wait(check, message):
         until = time.monotonic() + 35
@@ -91,7 +92,7 @@ def inside(output):
         wait(lambda: call("OfficeTest", "Screen"), "Headless Shell did not initialize")
         env = dict(os.environ, WAYLAND_DISPLAY="norvi-render-test")
         with (output / "launch.log").open("w") as log:
-            subprocess.run([sys.executable, str(share / "experimental/desktop/launch.py"), "--worker", "--app", "calc"],
+            subprocess.run([sys.executable, str(share / "experimental/desktop/launch.py"), "--worker", "--app", app],
                            env=env, stdout=log, stderr=subprocess.STDOUT, timeout=60, check=True)
         call("OfficeTest", "Place")
         call("OfficeTest", "WindowState", "(s)", "maximized")
@@ -123,7 +124,7 @@ def inside(output):
             delta = ImageChops.difference(first.crop(box), second.crop(box))
             differences[label] = sum(max(pixel) > 0 for pixel in delta.get_flattened_data())
         assert differences["header"] > 1000 and differences["body"] == 0, differences
-        result = {"kind": "headless qualification; not physical host evidence", "render_source": active["geometry_source"],
+        result = {"kind": "headless qualification; not physical host evidence", "app": app, "render_source": active["geometry_source"],
                   "tab_samples": len(samples), "opaque_or_transition_samples": 0, "backdrop_changed_pixels": differences,
                   "geometry": active}
         (output / "receipt.json").write_text(json.dumps(result, indent=2) + "\n")
@@ -147,10 +148,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("candidate", nargs="?", type=Path)
     parser.add_argument("--inside", type=Path)
+    parser.add_argument("--app", choices=("calc", "writer"), default="calc")
     arguments = parser.parse_args()
     if arguments.inside:
         inside(arguments.inside)
     elif arguments.candidate:
-        raise SystemExit(outer(arguments.candidate))
+        raise SystemExit(outer(arguments.candidate, arguments.app))
     else:
         parser.error("Provide a locally built candidate")

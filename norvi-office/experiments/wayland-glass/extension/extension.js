@@ -400,7 +400,7 @@ export default class NorviOffice extends Extension {
             // Calc's pinned Tabbed preview has a fixed 37px tab band at dark 1×.
             // Require enough measured ribbon height and keep every painted pixel above edge.
             const panelTop = geometry.join + 36;
-            const panel = module === 'calc' && (this.nativeHost || GLib.getenv('NORVI_OFFICE_CALC_RIBBON') === '1') &&
+            const panel = (module === 'calc' || this.nativeHost) && (this.nativeHost || GLib.getenv('NORVI_OFFICE_CALC_RIBBON') === '1') &&
                 geometry.join_start !== undefined && geometry.edge - panelTop >= 55;
             uniform(mask, 'panel_top', panel ? panelTop / buffer.height : 0);
             if (panel) {
