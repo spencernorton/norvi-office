@@ -68,7 +68,10 @@ Bluetooth or camera monitors. Launch readiness requires the outer desktop viewer
 to be mapped with an active video stream; an inner screenshot alone does not pass.
 The Calc preview includes the study's grouped ribbon, command artwork and labels,
 and hides the sidebar. Icons are derived locally from the installed official
-theme; they are not vendored in the release. The workspace follows the desktop's
+theme; both Calc and Writer use the shared Home command artwork. Theme files are
+not vendored in the release. Tab changes trigger layout observations immediately;
+the native titlebar stays glass while the ribbon boundary is revalidated. A
+stopped geometry bridge still expires to an opaque fallback. The workspace follows the desktop's
 animation preference. Save and close documents using their own window controls
 before closing the outer preview workspace. Workspaces are retained under the
 user's state directory; they never replace the normal LibreOffice profile.

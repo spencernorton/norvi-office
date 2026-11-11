@@ -1,5 +1,22 @@
 # Journal
 
+## 2026-11-11 — Reduce tab flashes and complete Home artwork
+
+- Replaced the fixed input hold with event-driven chrome measurements. Native
+  titlebar glass persists while the ribbon boundary is revalidated; stale
+  geometry still expires opaque instead of exposing the work area.
+- Shared the disposable icon overlay with Writer and completed the visible
+  Home command artwork in both modules, preserving native color indicators,
+  font fields, styles and command bindings.
+- Seventeen Linux regressions and the Debian candidate build pass. Native
+  acceptance on fresh Calc/Writer previews confirms mapped, streaming host
+  viewers, working Undo/Redo and menus, and unchanged opaque body pixels.
+  Sampled tab recovery is 14–52 ms; the titlebar stays glass in every sample.
+- Closed superseded unmodified fictional previews. A modified earlier preview
+  remains open with its edits preserved. Source CI passes; remote native CI
+  currently cannot resolve the official distribution package hosts, so the
+  release remains gated rather than bypassing required checks.
+
 ## 2026-11-11 — Verify the outer desktop viewer
 
 - Corrected the previous acceptance gap: an inner compositor capture did not
