@@ -235,11 +235,17 @@ def transition_probe():
         # The opt-in profile removes the left quick-access strip, so tabs shift left.
         tab_x = 278 if os.environ.get("NORVI_OFFICE_CALC_RIBBON") == "1" else 450
         call("Click", x + tab_x, y + 65)
+        title_only = wait(lambda: next((item for item in json.loads(call("State", geometry=True)[0])
+                                      if item["reason"] == "transition" and item["enabled"] and
+                                      item["edge"] < before["edge"]), None),
+                          "Native titlebar glass did not survive the layout check", seconds=.4)
+        assert title_only["transitionCount"] > before["transitionCount"]
+        call("Capture", "calc-tab-transition.png")
+        # A dead geometry bridge must still fail fully opaque on expiry.
         paused = wait(lambda: next((item for item in json.loads(call("State", geometry=True)[0])
                                    if item["reason"] == "transition" and not item["enabled"]), None),
                       "Ribbon input never suspended glass", seconds=1)
         assert paused["transitionCount"] > before["transitionCount"]
-        call("Capture", "calc-tab-transition.png")
         time.sleep(0.45)
         # Even after the hold, an old report cannot bring back the mask.
         opaque = pair("calc-transition-stalled", False, "transition")

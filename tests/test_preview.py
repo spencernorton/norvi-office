@@ -127,6 +127,15 @@ class PreviewTests(unittest.TestCase):
                     self.assertEqual(theme.read("LICENSE"), b"upstream license")
                     self.assertIn(b"#f2eff8", theme.read("cmd/sc_paste.svg"))
                     self.assertNotIn(b"cmd/sc_paste.svg", theme.read("links.txt"))
+            writer_output = root / "writer.oxt"
+            with patch.object(ribbon, "SYSTEM_ICONS", icons):
+                ribbon.preview_package(base, writer_output, "writer")
+            with ZipFile(writer_output) as archive:
+                self.assertNotIn(b"Cell Styles", archive.read("norvi_glass.xcu"))
+                with ZipFile(BytesIO(archive.read("iconsets/images_sifr_dark_svg.zip"))) as theme:
+                    for prefix in ("sc_", "lc_", "32/"):
+                        for command in ("fontcolor", "backgroundcolor", "grow", "numberformatpercent", "paste"):
+                            self.assertIn(b"stroke-width=\"1.55\"", theme.read(f"cmd/{prefix}{command}.svg"))
 
     def test_preview_separates_bus_config_and_display_from_live_session(self):
         launch = load("preview_launch", EXPERIMENTS / "preview/launch.py")

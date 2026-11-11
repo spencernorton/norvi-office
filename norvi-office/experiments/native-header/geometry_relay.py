@@ -8,6 +8,24 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent / "wayland-glass/e
 import geometry  # noqa: E402
 
 Atspi, Gio, GLib = geometry.Atspi, geometry.Gio, geometry.GLib
+pending = 0
+
+
+def layout_changed(event):
+    global pending
+    try:
+        if event.source.get_application().get_name() != "soffice" or pending:
+            return
+    except GLib.Error:
+        return
+
+    def update():
+        global pending
+        pending = 0
+        report()
+        return GLib.SOURCE_REMOVE
+
+    pending = GLib.idle_add(update)
 
 
 def header_bars(node, depth=0):
@@ -59,5 +77,8 @@ if __name__ == "__main__":
     if not os.environ.get("NORVI_OFFICE_TEST_DIR"):
         sys.exit("Run the isolated native header harness.")
     Atspi.set_timeout(100, 100)
+    listener = Atspi.EventListener.new(layout_changed)
+    for event in ("object:bounds-changed", "object:children-changed", "object:state-changed:showing"):
+        listener.register(event)
     GLib.timeout_add(200, report)
     GLib.MainLoop().run()

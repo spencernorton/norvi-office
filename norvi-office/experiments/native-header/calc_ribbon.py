@@ -28,6 +28,29 @@ LABEL_GROUPS = (
 
 # The study's command artwork, drawn on a shared 24-unit grid.
 ICONS = {
+    "bold": ("M7 3h6a5 5 0 0 1 0 10H7Zm0 10h7a4 4 0 0 1 0 8H7Z", "#f2eff8"),
+    "italic": ("M10 3h10M4 21h10M15 3 9 21", "#f2eff8"),
+    "underline": ("M6 3v9a6 6 0 0 0 12 0V3M4 21h16", "#f2eff8"),
+    "fontcolor": ("M5 17 12 3l7 14M8 12h8M4 21h16", "#f2eff8"),
+    "backcolor": ("m4 15 10-11 6 6-11 10H4Zm7-8 6 6M3 22h18", "#f2eff8"),
+    "backgroundcolor": ("m4 15 10-11 6 6-11 10H4Zm7-8 6 6M3 22h18", "#f2eff8"),
+    "charbackcolor": ("m4 15 10-11 6 6-11 10H4Zm7-8 6 6M3 22h18", "#f2eff8"),
+    "color": ("M5 17 12 3l7 14M8 12h8M4 21h16", "#f2eff8"),
+    "grow": ("M3 19 9 5l6 14M5 14h8m3-9 3-3 3 3m-3-3v9", "#f2eff8"),
+    "shrink": ("M3 19 9 5l6 14M5 14h8m3-6 3 3 3-3m-3 3V2", "#f2eff8"),
+    "numberformatpercent": ("m5 20 14-16M9 6a3 3 0 1 1-6 0 3 3 0 0 1 6 0Zm12 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z", "#f2eff8"),
+    "numberformatthousands": ("M8 8h-3v5h3v4l-3 3m14-12h-3v5h3v4l-3 3", "#f2eff8"),
+    "functiondialog": ("M16 3h-3a3 3 0 0 0-3 3L7 19a3 3 0 0 1-3 2H2M5 9h10m0 5 6 7m0-7-6 7", "#f2eff8"),
+    "insertgraphic": ("M3 4h18v16H3Zm0 12 5-5 5 5 3-3 5 5M14 8h.01", "#f2eff8"),
+    "inserttable": ("M3 4h18v16H3ZM3 9h18M9 9v11m6-11v11M3 14h18", "#f2eff8"),
+    "table": ("M3 4h18v16H3ZM3 9h18M9 9v11m6-11v11M3 14h18", "#f2eff8"),
+    "insertobjectchart": ("M4 3v18h17M8 16v-5m5 5V6m5 10V9", "#f2eff8"),
+    "hyperlinkdialog": ("m9 15 6-6m-7 5-2 2a4 4 0 0 0 6 6l4-4m-6-8 4-4a4 4 0 0 1 6 6l-2 2", "#f2eff8"),
+    "insertannotation": ("M3 4h18v13H9l-6 4Zm4 5h10M7 13h7", "#f2eff8"),
+    "spellingandgrammardialog": ("m3 12 4 4 8-9M12 4h8m-5 0v6m3 5h3m-3 4h3", "#f2eff8"),
+    "calculate": ("M7 3h10v18H7ZM10 7h4m-4 5h4m-4 4h1m2 0h1", "#f2eff8"),
+    "calculatehard": ("M7 3h10v18H7ZM10 7h4m-4 5h4m-4 4h1m2 0h1", "#f2eff8"),
+    "delete": ("M4 6h16M9 6V3h6v3M6 6l1 15h10l1-15M10 10v7m4-7v7", "#f2eff8"),
     "conditionalformatmenu": ("M3 5h18v14H3ZM3 10h18M3 15h18M9 5v14m6-14v14", "#c1aaf3"),
     "paste": ("M8 5H5v16h14V5h-3M8 7V3h8v4H8m0 5h8m-8 4h6", "#f2eff8"),
     "rowoperations": ("M3 5h18v14H3ZM3 10h18M3 15h18m-12-10v14", "#f2eff8"),
@@ -55,7 +78,7 @@ ICONS = {
 }
 
 
-def localize_commands(config):
+def localize_commands(config, app="calc"):
     tree = ET.fromstring(config)
     path = ET.SubElement(tree, "item", {
         f"{{{REGISTRY}}}path": "/org.openoffice.Office.Paths/Paths/Iconset/InternalPaths",
@@ -63,7 +86,7 @@ def localize_commands(config):
     ET.SubElement(path, "node", {
         f"{{{REGISTRY}}}name": "%origin%/iconsets", f"{{{REGISTRY}}}op": "fuse",
     })
-    for component, section, labels in LABEL_GROUPS:
+    for component, section, labels in LABEL_GROUPS if app == "calc" else ():
         parent = f"/org.openoffice.Office.UI.{component}/UserInterface/{section}"
         for name, label in labels.items():
             item = ET.SubElement(tree, "item", {f"{{{REGISTRY}}}path": f"{parent}/['.uno:{name}']"})
@@ -77,8 +100,8 @@ def localize_commands(config):
     return ET.tostring(tree, encoding="utf-8", xml_declaration=True)
 
 
-def preview_package(source, output):
-    """Build the disposable Calc package with study icons and English labels."""
+def preview_package(source, output, app="calc"):
+    """Build the disposable shared icon package with module-specific labels."""
     theme = "iconsets/images_sifr_dark_svg.zip"
     # The release deliberately does not vendor Sifr. Derive the disposable
     # theme from the official installed package, retaining its license files.
@@ -112,7 +135,7 @@ def preview_package(source, output):
                     continue
                 contents = base.read(item)
                 if item.filename == "norvi_glass.xcu":
-                    contents = localize_commands(contents)
+                    contents = localize_commands(contents, app)
                 package.writestr(item, contents)
             package.writestr(theme, bundle.getvalue())
 

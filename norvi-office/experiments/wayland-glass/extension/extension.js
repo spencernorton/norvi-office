@@ -13,7 +13,9 @@ const API = `<node><interface name="dev.norvi.OfficeGeometry">
   <method name="PrepareChrome"><arg type="i" direction="in"/></method>
   <method name="State"><arg type="s" direction="out"/></method>
 </interface></node>`;
-const TRANSITION_HOLD = 350000; // Wait for a new observation after the input settles.
+// Input invalidates the ribbon boundary until its next measured layout. A
+// fixed delay here made every tab click flash opaque for half a second.
+const TRANSITION_HOLD = 0;
 const MAX_AGE = 600000; // microseconds; missing/slow accessibility fails opaque.
 
 function moduleFor(window) {
@@ -224,7 +226,7 @@ export default class NorviOffice extends Extension {
                 item.title === window.get_title() &&
                 item.size[0] === buffer.width && item.size[1] === buffer.height);
             const fresh = GLib.get_monotonic_time() - this.reportAt < MAX_AGE;
-            const geometry = fresh && matches.length === 1 ? matches[0] : null;
+            let geometry = fresh && matches.length === 1 ? matches[0] : null;
             const dark = this.interfaceSettings.get_string('color-scheme') === 'prefer-dark' &&
                 !this.contrastSettings.get_boolean('high-contrast') &&
                 !/highcontrast/i.test(this.interfaceSettings.get_string('gtk-theme'));
@@ -238,7 +240,13 @@ export default class NorviOffice extends Extension {
                 entry.inputEdge = geometry.edge;
                 entry.join = geometry.join;
             }
-            const visible = supported && dark && valid && !settling;
+            // The injected native titlebar cannot move when VCL changes tabs.
+            // Keep that measured band glass while the ribbon is remeasured;
+            // never reuse a ribbon boundary that could now overlap the sheet.
+            const titleOnly = valid && settling && geometry.join_start > top;
+            if (titleOnly)
+                geometry = {...geometry, edge: geometry.join_start};
+            const visible = supported && dark && valid && (!settling || titleOnly);
             entry.reason = !supported ? 'window-or-scale' : !dark ? 'appearance' :
                 settling ? 'transition' : !valid ? 'geometry' : 'active';
             entry.edge = visible ? geometry.edge : null;
