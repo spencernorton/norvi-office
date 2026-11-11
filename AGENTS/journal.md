@@ -1,5 +1,18 @@
 # Journal
 
+## 2026-11-11 — Keep cached compositor code out of opaque enrollment
+
+- The candidate's native header and ribbon do not require compositor effects.
+  Enrollment now leaves the Office extension disabled, so replacing files cannot
+  reactivate an older cached shader against new clients. No sign-out, Shell
+  restart or open-document closure is needed for this opaque application UI.
+- Eight integration regressions pass, including the inactive-effects invariant
+  and complete restoration after a settings-write failure. The preceding exact
+  source built on Linux and passed twenty-nine Python tests, twenty-four GJS
+  cases and native checks; its isolated runtime exercised all six modules,
+  Calc editing/Undo/Redo/Save, Writer Undo and Base embedded SQL. This newer
+  installer head still requires its own native CI and installed verification.
+
 ## 2026-11-11 — Verify fresh Mac Calc mode and reconcile candidate coverage
 
 - A fresh light-profile native Calc launch opened grouped Home and exposed the

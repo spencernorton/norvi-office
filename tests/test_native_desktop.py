@@ -160,8 +160,11 @@ class NativeDesktopTests(unittest.TestCase):
             def outputs(args, **kwargs):
                 return str(desktop) + "\n" if args[0] == "xdg-user-dir" else output(args, **kwargs)
 
+            activation_calls = []
+
             def activation(add):
-                if fail is True and add:
+                activation_calls.append(add)
+                if fail is True and len(activation_calls) == 1:
                     raise ValueError("activation failed")
 
             with patch.object(installer, "locations", return_value=(home, data, state)), \
@@ -173,6 +176,7 @@ class NativeDesktopTests(unittest.TestCase):
                         installer.install(candidate, desktop_shortcuts)
                 else:
                     installer.install(candidate, desktop_shortcuts)
+                    self.assertEqual(activation_calls, [False], "Enrollment reactivated a cached native compositor")
                     installed = target.read_text()
                     self.assertIn("Name=Office Calc", installed)
                     self.assertIn("--desktop --app calc %U", installed)

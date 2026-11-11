@@ -175,7 +175,8 @@ def install(candidate, desktop_shortcuts=True):
         shutil.copy2(target, state / "backups" / backup)
         records.append({"path": str(target), "backup": backup, "sha256": sha(target),
                         "removed": True, "desktop": target.parent == desktop_dir})
-    manifest = {"runtime": str(root), "files": records, "original_profile": "untouched", "activation": "pending session restart"}
+    manifest = {"runtime": str(root), "files": records, "original_profile": "untouched",
+                "activation": "native launchers ready; experimental compositor disabled"}
     (state / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     changed = set()
     try:
@@ -195,7 +196,10 @@ def install(candidate, desktop_shortcuts=True):
                     raise ValueError(f"A preview shortcut changed during installation: {target.name}")
                 target.unlink()
                 changed.add(target)
-        activation(True)
+        # Native alpha is unqualified. An older, cached Shell module must also
+        # stay disabled: replacing its files does not reload that module on
+        # GNOME 50, and its preceding shader could mask new client pixels.
+        activation(False)
         subprocess.run(["update-desktop-database", str(data / "applications")], check=True)
     except Exception:
         for record in records:
@@ -210,7 +214,7 @@ def install(candidate, desktop_shortcuts=True):
         prune_empty(destination)
         shutil.rmtree(state)
         raise
-    print("Installed direct Office desktop launchers. The new glass extension loads at the next sign-in.")
+    print("Installed direct Office desktop launchers. Experimental compositor effects remain disabled.")
     print("Original LibreOffice profile retained. Undo: norvi-office-native-uninstall")
 
 

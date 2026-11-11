@@ -49,6 +49,10 @@ The direct-host source now attaches no native compositor alpha mask and keeps
 experimental client alpha disabled, including when its old environment opt-in
 is present. Application pixels remain opaque. Neither path may be described as
 seamless ribbon glass or a fix for the complete tab-transition behavior.
+Enrollment also disables the Office extension in the current Shell session;
+replacing its files cannot safely update a previously cached shader. The native
+header and ribbon work independently and require no sign-out for this opaque
+candidate. No global desktop restart or logout is part of enrollment.
 
 The client composition experiment exposed a second timing boundary: the exact
 LibreOffice GTK backend can copy a cached VCL surface during GTK drawing. A full

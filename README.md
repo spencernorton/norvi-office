@@ -71,8 +71,10 @@ acceptance gaps before installing a new candidate.
 
 After locally qualifying a candidate, install the user integration with
 `python3 scripts/install_native_desktop.py /path/to/candidate.deb`.
-The new compositor extension requires a sign-out/sign-in on GNOME 50; its old
-reload API is disabled. Existing open work is never closed for activation.
+The native header and ribbon require no desktop restart. Enrollment keeps the
+experimental compositor disabled, including any older cached Office extension.
+Replacing files does not reload that extension on GNOME 50, so enabling its
+preceding shader could affect new clients. Existing open work is preserved.
 Restore the preceding launchers with `norvi-office-native-uninstall`; profiles
 and documents remain, and open applications can be closed normally.
 Restore the native integration before using an older preview removal command.
