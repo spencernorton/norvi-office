@@ -13,8 +13,11 @@ pending = 0
 
 def layout_changed(event):
     global pending
+    if pending:
+        return
     try:
-        if event.source.get_application().get_name() != "soffice" or pending:
+        application = event.source.get_application()
+        if application is None or application.get_name() != "soffice":
             return
     except GLib.Error:
         return
