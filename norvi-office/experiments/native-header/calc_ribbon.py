@@ -11,18 +11,18 @@ from fixtures import connect, prop, stop_office
 
 SOURCE = Path("/usr/lib/libreoffice/share/config/soffice.cfg/modules/scalc/ui/notebookbar.ui")
 SOURCE_HASH = "95663027bb4325d46522b19259fe47fc85b837b6f92558f6568942b58d535804"
+SYSTEM_ICONS = Path("/usr/share/libreoffice/share/config/images_sifr_dark_svg.zip")
 SHORTCUTS = "private:resource/toolbar/notebookbarshortcuts"
 REGISTRY = "http://openoffice.org/2001/registry"
 
-COMMAND_LABELS = {
-    "CalcCommands": {
+LABEL_GROUPS = (
+    ("CalcCommands", "Commands", {
         "ConditionalFormatMenu": "Conditional Formatting",
         "CalculateHard": "Recalculate All",
-        "RowOperations": "Rows",
-        "ColumnOperations": "Columns",
-    },
-    "GenericCommands": {"ViewSidebarStyles": "Cell Styles"},
-}
+    }),
+    ("GenericCommands", "Commands", {"ViewSidebarStyles": "Cell Styles"}),
+    ("CalcCommands", "Popups", {"RowOperations": "Rows", "ColumnOperations": "Columns"}),
+)
 
 
 
@@ -57,11 +57,17 @@ ICONS = {
 
 def localize_commands(config):
     tree = ET.fromstring(config)
-    for component, labels in COMMAND_LABELS.items():
-        parent = f"/org.openoffice.Office.UI.{component}/UserInterface/Commands"
+    path = ET.SubElement(tree, "item", {
+        f"{{{REGISTRY}}}path": "/org.openoffice.Office.Paths/Paths/Iconset/InternalPaths",
+    })
+    ET.SubElement(path, "node", {
+        f"{{{REGISTRY}}}name": "%origin%/iconsets", f"{{{REGISTRY}}}op": "fuse",
+    })
+    for component, section, labels in LABEL_GROUPS:
+        parent = f"/org.openoffice.Office.UI.{component}/UserInterface/{section}"
         for name, label in labels.items():
             item = ET.SubElement(tree, "item", {f"{{{REGISTRY}}}path": f"{parent}/['.uno:{name}']"})
-            fields = ("Label", "ContextLabel", "PopupLabel") if name.endswith("Operations") else ("Label",)
+            fields = ("Label",)
             for field_name in fields:
                 field = ET.SubElement(item, "prop", {
                     f"{{{REGISTRY}}}name": field_name, f"{{{REGISTRY}}}op": "fuse",
@@ -74,7 +80,9 @@ def localize_commands(config):
 def preview_package(source, output):
     """Build the disposable Calc package with study icons and English labels."""
     theme = "iconsets/images_sifr_dark_svg.zip"
-    with ZipFile(source) as base, ZipFile(BytesIO(base.read(theme))) as icons:
+    # The release deliberately does not vendor Sifr. Derive the disposable
+    # theme from the official installed package, retaining its license files.
+    with ZipFile(source) as base, ZipFile(SYSTEM_ICONS) as icons:
         replacements = {}
         for prefix, size in (("sc_", 16), ("lc_", 24), ("32/", 32)):
             for name, (path, color) in ICONS.items():
@@ -100,12 +108,13 @@ def preview_package(source, output):
                 themed.writestr(name, contents)
         with ZipFile(output, "x", ZIP_DEFLATED) as package:
             for item in base.infolist():
-                contents = base.read(item)
                 if item.filename == theme:
-                    contents = bundle.getvalue()
-                elif item.filename == "norvi_glass.xcu":
+                    continue
+                contents = base.read(item)
+                if item.filename == "norvi_glass.xcu":
                     contents = localize_commands(contents)
                 package.writestr(item, contents)
+            package.writestr(theme, bundle.getvalue())
 
 
 def widget(kind, identifier, **properties):
@@ -121,6 +130,10 @@ def pack(parent, node):
 
 def add_formulas_tab(tree):
     tabs = tree.find(".//object[@id='ContextContainer']")
+    for child in list(tabs):
+        node = child.find("object")
+        if node is not None and node.get("id") in ("Tools Tab", "DevLabel"):
+            tabs.remove(child)
     page = widget("sfxlo-PriorityHBox", "Norvi Formulas Tab", spacing="8")
     label = widget("GtkLabel", "NorviFormulasLabel", label="For~mulas", use_underline="True")
     for name, commands in (
@@ -223,6 +236,9 @@ def build_home(tree, dark):
     for identifier in ("Home-Section-Clipboard", "Home-Section-Find1"):
         set_property(identifier, "margin_start", "10")
     set_property("Home-Section-Format", "margin_start", "8")
+    set_property("Home-RowOperations", "label", "Rows")
+    set_property("Home-ColumnOperations", "label", "Columns")
+    set_property("Home-ConditionalFormatMenu", "label", "Conditional\nFormatting")
     # The native StyleApply combobox takes a full field's width. Use the
     # native Cell Styles deck for the study's compact labeled action.
     set_property("Home-StyleApply", "action_name", ".uno:ViewSidebarStyles")
@@ -293,7 +309,7 @@ def prepare(profile):
             supplier = context.getValueByName("/singletons/com.sun.star.ui.theModuleUIConfigurationManagerSupplier")
             manager = supplier.getUIConfigurationManager("com.sun.star.sheet.SpreadsheetDocument")
             settings = manager.getSettings(SHORTCUTS, True)
-            duplicates = {".uno:OpenFromCalc", ".uno:Save", ".uno:Undo", ".uno:Redo", ".uno:Print"}
+            duplicates = {".uno:OpenFromCalc", ".uno:Save", ".uno:Undo", ".uno:Redo", ".uno:Print", ".uno:Menubar"}
             for index in reversed(range(settings.getCount())):
                 properties = {item.Name: item.Value for item in settings.getByIndex(index)}
                 if properties.get("CommandURL") in duplicates:
@@ -307,6 +323,14 @@ def prepare(profile):
                 (prop("nodepath", "/org.openoffice.Office.UI.ToolbarMode"),))
             config.ActiveCalc = "notebookbar.ui"
             config.commitChanges()
+            for component, section, labels in LABEL_GROUPS:
+                access = provider.createInstanceWithArguments(
+                    "com.sun.star.configuration.ConfigurationUpdateAccess",
+                    (prop("nodepath", f"/org.openoffice.Office.UI.{component}/UserInterface/{section}"),))
+                for command, label in labels.items():
+                    entry = access.getByName(".uno:" + command)
+                    entry.Label = label
+                access.commitChanges()
             desktop = context.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", context)
             desktop.terminate()
         finally:
