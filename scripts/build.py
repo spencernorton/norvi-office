@@ -17,12 +17,12 @@ ROOT = Path(__file__).resolve().parent.parent
 
 def extension(source, destination, epoch):
     stamp = datetime.fromtimestamp(max(epoch, 315532800), timezone.utc).timetuple()[:6]
-    with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+    with zipfile.ZipFile(destination, "w", compression=zipfile.ZIP_STORED) as archive:
         for path in sorted(source.rglob("*")):
             if path.is_file():
                 info = zipfile.ZipInfo(path.relative_to(source).as_posix(), stamp)
                 info.external_attr = 0o100644 << 16
-                info.compress_type = zipfile.ZIP_DEFLATED
+                info.compress_type = zipfile.ZIP_STORED
                 archive.writestr(info, path.read_bytes())
 
 

@@ -27,6 +27,9 @@ for app in ('writer', 'calc'):
     profile = work / ('profile-' + app)
     expected = ('-env:UserInstallation=' + profile.as_uri()).encode()
     try:
+        subprocess.run(['unopkg', 'add', '-env:UserInstallation=' + profile.as_uri(),
+                        str(payload / 'usr/share/norvi-office/extensions/NorviGlass.oxt')],
+                       check=True, stdout=subprocess.DEVNULL)
         started = time.monotonic()
         result = subprocess.run([str(program), '--profile', str(profile), '--app', app, files[app]], timeout=12)
         assert result.returncode == 0
