@@ -16,7 +16,7 @@ from gi.repository import Atspi  # noqa: E402
 
 payload = Path(sys.argv[1]).resolve()
 program = payload / 'usr/bin/norvi-office'
-source = payload / 'usr/share/norvi-office/experimental/native-header/fixtures.py'
+source = Path(sys.argv[2]).resolve()
 spec = importlib.util.spec_from_file_location('installed_fixtures', source)
 fixtures = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(fixtures)

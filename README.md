@@ -5,8 +5,8 @@ The official LibreOffice engine stays unmodified. Ubuntu supplies engine and
 security updates; the signed Norvi APT channel supplies our UI updates.
 
 The initial package provides the approved Office icon and line-only loading
-prompt, a configuration extension and the source and test harness for the
-experimental native glass header/ribbon. The glass adapter is qualified against
+prompt, a configuration extension and dormant experimental native glass components.
+The source release includes the complete qualification harness. The glass adapter is qualified against
 LibreOffice 26.2.6.3 and GNOME 50 only and is not enabled by normal launches.
 
 ## Build and check

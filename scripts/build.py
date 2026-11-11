@@ -21,8 +21,12 @@ def source_files(source):
     return [ROOT / name for name in names if name.startswith(prefix)]
 
 
-def copy_source(source, destination):
+def copy_source(source, destination, runtime_only=False):
     for path in source_files(source):
+        if runtime_only and (path.name.startswith(("test_", "qualify")) or path.name in
+                             {"capture.sh", "build.sh", "evidence.py", "fixtures.py", "verify.py", "test_menu.c"}
+                             or "test-driver" in path.parts):
+            continue
         target = destination / path.relative_to(source)
         target.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy2(path, target)
@@ -62,7 +66,7 @@ def build(output):
         (share / "startup/package-mode").write_text("Shared runtime managed by APT\n")
         experimental = share / "experimental"
         for name in ("native-header", "wayland-glass", "live-tools", "data-model"):
-            copy_source(source / "experiments" / name, experimental / name)
+            copy_source(source / "experiments" / name, experimental / name, runtime_only=True)
         modules = stage / "usr/lib/x86_64-linux-gnu/norvi-office"
         modules.mkdir(parents=True)
         flags = subprocess.check_output(["pkg-config", "--cflags", "--libs", "gtk+-3.0", "gmodule-2.0"], text=True).split()

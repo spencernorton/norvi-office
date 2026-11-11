@@ -34,7 +34,7 @@ jobs:
       - name: Official runtime and build dependencies
         run: |
           apt-get update -qq
-          apt-get install -y -qq --no-install-recommends git ca-certificates build-essential pkg-config \
+          apt-get install -y -qq --no-install-recommends git ca-certificates build-essential pkg-config fakeroot \
             libgtk-3-dev python3 python3-gi python3-gi-cairo python3-cairo python3-pil python3-uno \
             gir1.2-gtk-3.0 gir1.2-atspi-2.0 desktop-file-utils xvfb xauth dbus dbus-x11 \
             libreoffice-writer libreoffice-calc libreoffice-impress libreoffice-draw libreoffice-base \
@@ -56,6 +56,8 @@ jobs:
       - name: Qualify the exact installed payload outside the checkout
         run: |
           bash scripts/qualify_package.sh out/candidate >out/installed-runtime.log 2>&1
+          python3 scripts/qualify_lifecycle.py out/candidate/*.deb
+          python3 norvi-office/experiments/live-tools/qualify_formats.py >out/format-contract.log 2>&1
           python3 scripts/upstream_report.py out/upstream.json
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
@@ -70,6 +72,7 @@ jobs:
           path: |
             out/installed-runtime.log
             out/upstream.json
+            out/format-contract.log
           retention-days: 14
   tests:
     name: tests

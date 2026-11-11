@@ -14,4 +14,4 @@ dpkg-deb -x "${package[0]}" "$payload"
 test ! -e "$payload/usr/lib/libreoffice"
 test ! -e "$payload/etc"
 cd /tmp
-xvfb-run -a dbus-run-session -- /usr/bin/python3 "$root/scripts/smoke_installed.py" "$payload"
+xvfb-run -a dbus-run-session -- /usr/bin/python3 "$root/scripts/smoke_installed.py" "$payload" "$root/norvi-office/experiments/native-header/fixtures.py"
