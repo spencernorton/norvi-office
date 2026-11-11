@@ -7,8 +7,6 @@ import subprocess
 import xml.etree.ElementTree as ET
 from zipfile import ZIP_DEFLATED, ZipFile
 
-from uno_utils import connect, prop, stop_office
-
 SOURCE = Path("/usr/lib/libreoffice/share/config/soffice.cfg/modules/scalc/ui/notebookbar.ui")
 SOURCE_HASH = "95663027bb4325d46522b19259fe47fc85b837b6f92558f6568942b58d535804"
 SYSTEM_ICONS = Path("/usr/share/libreoffice/share/config/images_sifr_dark_svg.zip")
@@ -125,15 +123,21 @@ def localize_commands(config, app="calc"):
     return ET.tostring(tree, encoding="utf-8", xml_declaration=True)
 
 
-def preview_package(source, output, app="calc"):
+def preview_package(source, output, app="calc", icons_source=None, appearance="dark"):
     """Build the disposable shared icon package with module-specific labels."""
-    theme = "iconsets/images_sifr_dark_svg.zip"
+    if appearance not in ("dark", "light"):
+        raise ValueError("Icon appearance must be dark or light")
+    style = "sifr_dark_svg" if appearance == "dark" else "sifr_svg"
+    theme = f"iconsets/images_{style}.zip"
     # The release deliberately does not vendor Sifr. Derive the disposable
     # theme from the official installed package, retaining its license files.
-    with ZipFile(source) as base, ZipFile(SYSTEM_ICONS) as icons:
+    with ZipFile(source) as base, ZipFile(icons_source or SYSTEM_ICONS) as icons:
         replacements = {}
         for prefix, size in (("sc_", 16), ("lc_", 24), ("32/", 32)):
             for name, (path, color) in ICONS.items():
+                if appearance == "light":
+                    # Sifr's official light ink and the existing Norvi accent.
+                    color = "#2e3436" if color == "#f2eff8" else "#7460d4"
                 replacements[f"cmd/{prefix}{name}.svg"] = (
                     f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24">'
                     f'<path d="{path}" fill="none" stroke="{color}" stroke-width="1.55" '
@@ -161,6 +165,8 @@ def preview_package(source, output, app="calc"):
                 contents = base.read(item)
                 if item.filename == "norvi_glass.xcu":
                     contents = localize_commands(contents, app)
+                    if appearance == "light":
+                        contents = contents.replace(b">sifr_dark_svg<", b">sifr_svg<")
                 package.writestr(item, contents)
             package.writestr(theme, bundle.getvalue())
 
@@ -327,6 +333,8 @@ def build_home(tree, dark):
 
 
 def prepare(profile, native=False, environment=None):
+    from uno_utils import connect, prop, stop_office
+
     root = Path.cwd().resolve()
     environment = os.environ if environment is None else environment
     permitted = root.name.startswith("capture.") or (native and environment.get("NORVI_OFFICE_SESSION_DIR") == str(root))

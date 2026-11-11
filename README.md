@@ -75,7 +75,28 @@ and documents remain, and open applications can be closed normally.
 Restore the native integration before using an older preview removal command.
 This is an opt-in desktop qualification path, not automatic stable promotion.
 
-### Visible design preview
+### Native Mac design trial
+
+The source can prepare an isolated trial for an official macOS LibreOffice
+bundle whose Calc notebookbar matches the pinned source. It reuses the grouped
+Calc layout and shared command artwork with native Aqua controls and shortcuts.
+The GNOME glass adapter is unavailable on macOS; this does not qualify a glass
+release or a completed redesign across all modules.
+
+```sh
+python3 norvi-office/experiments/macos/prepare.py --app-bundle /path/to/LibreOffice.app --output /path/to/new-trial --appearance dark
+```
+
+Preparation launches nothing and changes neither the application nor the normal
+profile. Its receipt includes the explicit `unopkg` installation arguments for
+the fresh trial profile. Install that preset before opening its module entries
+under `Applications`. All runtime commands preserve document recovery and set
+`PYTHONDONTWRITEBYTECODE=1` to keep signed application resources unchanged.
+Dark and light variants use the corresponding official Sifr resources and
+the approved command paths. Save work before closing; trial documents and
+profiles are never removed automatically.
+
+### Visible Linux design preview
 
 The normal Office launcher currently enables the loading prompt and icon only.
 It does not display the experimental header, ribbon or glass. The separate

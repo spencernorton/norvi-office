@@ -1,5 +1,20 @@
 # Journal
 
+## 2026-11-11 — Prepare native Mac design trials
+
+- Added a pure preparation helper for a matching official Mac bundle, an isolated
+  profile, shared artwork and the existing Calc ribbon transformation. It creates
+  seven native launch entries with normal recovery/shortcuts and no nested desktop.
+- Preparation rejects unknown ribbon inputs, existing trials and application/live
+  profile destinations. The generated receipt separates preparation, preset
+  installation and visible acceptance. Runtime commands suppress Python bytecode
+  writes inside the signed application bundle.
+- Dark/light icon variants derive from the corresponding official Sifr resources
+  and retain their license/provenance. GNOME glass is explicitly unavailable on
+  macOS; no complete-suite or installed-runtime acceptance is claimed here.
+- Source-only regressions cover unchanged official inputs, retained trial work,
+  launch/profile isolation, recovery, theme licenses and both icon variants.
+
 ## 2026-11-11 — Scope render checks to notebookbar tabs
 
 - A separate selected tab group, such as Calc's sheet tabs, must not be confused
