@@ -6,14 +6,15 @@ import Meta from 'gi://Meta';
 import Shell from 'gi://Shell';
 import St from 'gi://St';
 import {Extension} from 'resource:///org/gnome/shell/extensions/extension.js';
+import {selectGeometry} from './geometryPolicy.js';
 
 const WINDOW_ID = /^(?:org\.libreoffice\.LibreOffice\.|libreoffice-)(writer|calc|impress|draw|base|math)$/i;
 const API = `<node><interface name="dev.norvi.OfficeGeometry">
   <method name="Report"><arg type="s" direction="in"/></method>
   <method name="PrepareChrome"><arg type="i" direction="in"/></method>
   <method name="State"><arg type="s" direction="out"/></method>
-  <method name="CaptureNative"><arg type="i" direction="in"/><arg type="s" direction="in"/></method>
-  <method name="ProbeBackdrop"><arg type="i" direction="in"/><arg type="b" direction="in"/></method>
+  <method name="CaptureNative"><arg type="u" direction="in"/><arg type="s" direction="in"/></method>
+  <method name="ProbeBackdrop"><arg type="u" direction="in"/><arg type="b" direction="in"/></method>
 </interface></node>`;
 Gio._promisify(Shell.Screenshot.prototype, 'screenshot_area');
 // Input invalidates the ribbon boundary until its next measured layout. A
@@ -174,22 +175,23 @@ export default class NorviOffice extends Extension {
     State() {
         const box = rect => [rect.x, rect.y, rect.width, rect.height];
         return JSON.stringify([...this.entries.values()].map(entry => ({
-            app: moduleFor(entry.window), pid: entry.window.get_pid(), enabled: entry.mask.enabled,
+            app: moduleFor(entry.window), pid: entry.window.get_pid(),
+            window_id: entry.window.get_stable_sequence(), title: entry.window.get_title(), enabled: entry.mask.enabled,
             edge: entry.edge, reason: entry.reason, transitionCount: entry.transitionCount,
             frame: box(entry.window.get_frame_rect()), buffer: box(entry.window.get_buffer_rect()),
         })));
     }
 
-    nativeEntry(pid) {
-        const entry = [...this.entries.values()].find(item => item.window.get_pid() === pid &&
-            this.geometry.some(g => g.pid === pid && g.title === item.window.get_title()));
+    nativeEntry(windowId) {
+        const entry = [...this.entries.values()].find(item => item.window.get_stable_sequence() === windowId &&
+            this.geometry.some(g => g.pid === item.window.get_pid() && g.title === item.window.get_title()));
         if (!this.nativeHost || !entry)
             throw new Error('No enrolled desktop Office window');
         return entry;
     }
 
-    ProbeBackdrop(pid, pattern) {
-        const entry = this.nativeEntry(pid);
+    ProbeBackdrop(windowId, pattern) {
+        const entry = this.nativeEntry(windowId);
         entry.probe?.destroy();
         entry.probe = null;
         if (!pattern)
@@ -203,11 +205,11 @@ export default class NorviOffice extends Extension {
         actor.get_parent().insert_child_below(entry.probe, actor);
     }
 
-    async CaptureNativeAsync([pid, name], invocation) {
+    async CaptureNativeAsync([windowId, name], invocation) {
         try {
             if (!/^[a-z-]+\.png$/.test(name))
                 throw new Error('Invalid capture name');
-            const entry = this.nativeEntry(pid);
+            const entry = this.nativeEntry(windowId);
             entry.window.activate(global.get_current_time());
             await new Promise(resolve => GLib.timeout_add(GLib.PRIORITY_DEFAULT, 250, () => {
                 resolve();
@@ -283,7 +285,7 @@ export default class NorviOffice extends Extension {
                 item.title === window.get_title() &&
                 item.size[0] === buffer.width && item.size[1] === buffer.height);
             const fresh = GLib.get_monotonic_time() - this.reportAt < MAX_AGE;
-            let geometry = fresh && matches.length === 1 ? matches[0] : null;
+            let geometry = fresh ? selectGeometry(matches) : null;
             const dark = this.interfaceSettings.get_string('color-scheme') === 'prefer-dark' &&
                 !this.contrastSettings.get_boolean('high-contrast') &&
                 !/highcontrast/i.test(this.interfaceSettings.get_string('gtk-theme'));
