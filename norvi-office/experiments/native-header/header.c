@@ -55,6 +55,107 @@ static GtkWidget *study_icon(guint index) {
     return image;
 }
 
+/* This titlebar owns a downward GtkMenu button. Programmatic/accessible clicks
+ * can arrive after unmapping, without the pointer grab that normally dismisses
+ * a GtkMenu. Keep that behavior local to our subclass, using public GTK APIs. */
+typedef struct { GtkMenuButton parent; gboolean closed, dismissing; } NorviHeaderMenuButton;
+typedef struct { GtkMenuButtonClass parent; } NorviHeaderMenuButtonClass;
+G_DEFINE_TYPE(NorviHeaderMenuButton, norvi_header_menu_button, GTK_TYPE_MENU_BUTTON)
+
+static gboolean header_menu_anchor_live(NorviHeaderMenuButton *button) {
+    GtkWidget *widget = GTK_WIDGET(button);
+    if (button->closed || gtk_widget_in_destruction(widget) ||
+            !gtk_widget_get_realized(widget) || !gtk_widget_get_mapped(widget))
+        return FALSE;
+    GtkWidget *top = gtk_widget_get_toplevel(widget);
+    GdkWindow *surface = gtk_widget_get_window(widget);
+    return GTK_IS_WINDOW(top) && !gtk_widget_in_destruction(top) &&
+        gtk_widget_get_realized(top) && gtk_widget_get_mapped(top) &&
+        surface && !gdk_window_is_destroyed(surface);
+}
+
+static void header_menu_popdown(NorviHeaderMenuButton *button) {
+    if (button->dismissing)
+        return;
+    GtkMenu *borrowed = gtk_menu_button_get_popup(GTK_MENU_BUTTON(button));
+    g_autoptr(GtkWidget) popup = borrowed ? g_object_ref(GTK_WIDGET(borrowed)) : NULL;
+    if (popup && gtk_widget_get_visible(popup)) {
+        button->dismissing = TRUE;
+        gtk_menu_popdown(GTK_MENU(popup));
+        button->dismissing = FALSE;
+    }
+}
+
+static void header_menu_clicked(GtkButton *widget) {
+    g_autoptr(GtkWidget) keep = g_object_ref(GTK_WIDGET(widget));
+    NorviHeaderMenuButton *button = (NorviHeaderMenuButton *)widget;
+    /* GTK deactivation itself calls clicked to clear an active toggle. */
+    if (!gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget)) && !header_menu_anchor_live(button))
+        return;
+    GTK_BUTTON_CLASS(norvi_header_menu_button_parent_class)->clicked(widget);
+}
+
+static void header_menu_toggled(GtkToggleButton *widget) {
+    g_autoptr(GtkWidget) keep = g_object_ref(GTK_WIDGET(widget));
+    NorviHeaderMenuButton *button = (NorviHeaderMenuButton *)widget;
+    if (!gtk_toggle_button_get_active(widget)) {
+        header_menu_popdown(button);
+        GTK_TOGGLE_BUTTON_CLASS(norvi_header_menu_button_parent_class)->toggled(widget);
+        return;
+    }
+    if (!header_menu_anchor_live(button)) {
+        gtk_toggle_button_set_active(widget, FALSE);
+        return;
+    }
+    GtkMenu *borrowed = gtk_menu_button_get_popup(GTK_MENU_BUTTON(widget));
+    if (!borrowed) {
+        GTK_TOGGLE_BUTTON_CLASS(norvi_header_menu_button_parent_class)->toggled(widget);
+        return;
+    }
+    g_autoptr(GtkWidget) popup = g_object_ref(GTK_WIDGET(borrowed));
+    if (gtk_widget_get_visible(popup))
+        return;
+    /* Stock GtkMenuButton changes these properties after its toggled entry.
+     * Their notifications can close the owner, so recheck before popup. */
+    g_object_set(popup, "anchor-hints", GDK_ANCHOR_FLIP_Y | GDK_ANCHOR_SLIDE | GDK_ANCHOR_RESIZE,
+        "menu-type-hint", GDK_WINDOW_TYPE_HINT_DROPDOWN_MENU, NULL);
+    if (!header_menu_anchor_live(button) ||
+            gtk_menu_button_get_popup(GTK_MENU_BUTTON(widget)) != GTK_MENU(popup)) {
+        gtk_toggle_button_set_active(widget, FALSE);
+        return;
+    }
+    GdkGravity anchor = GDK_GRAVITY_SOUTH_WEST, menu_anchor = GDK_GRAVITY_NORTH_WEST;
+    if (gtk_widget_get_halign(popup) == GTK_ALIGN_END) {
+        anchor = GDK_GRAVITY_SOUTH_EAST;
+        menu_anchor = GDK_GRAVITY_NORTH_EAST;
+    } else if (gtk_widget_get_halign(popup) == GTK_ALIGN_CENTER) {
+        anchor = GDK_GRAVITY_SOUTH;
+        menu_anchor = GDK_GRAVITY_NORTH;
+    }
+    GdkEvent *event = gtk_get_current_event();
+    gtk_menu_popup_at_widget(GTK_MENU(popup), GTK_WIDGET(widget), anchor, menu_anchor, event);
+    if (header_menu_anchor_live(button) && (!event || event->type == GDK_KEY_PRESS || event->type == GDK_KEY_RELEASE))
+        gtk_menu_shell_select_first(GTK_MENU_SHELL(popup), FALSE);
+    g_clear_pointer(&event, gdk_event_free);
+}
+
+static void header_menu_destroy(GtkWidget *widget) {
+    ((NorviHeaderMenuButton *)widget)->closed = TRUE;
+    header_menu_popdown((NorviHeaderMenuButton *)widget);
+    GTK_WIDGET_CLASS(norvi_header_menu_button_parent_class)->destroy(widget);
+}
+
+static void norvi_header_menu_button_class_init(NorviHeaderMenuButtonClass *klass) {
+    GTK_BUTTON_CLASS(klass)->clicked = header_menu_clicked;
+    GTK_TOGGLE_BUTTON_CLASS(klass)->toggled = header_menu_toggled;
+    GTK_WIDGET_CLASS(klass)->destroy = header_menu_destroy;
+}
+static void norvi_header_menu_button_init(NorviHeaderMenuButton *self) { (void)self; }
+
+static GtkWidget *header_menu_new(void) {
+    return g_object_new(norvi_header_menu_button_get_type(), "use-popover", FALSE, NULL);
+}
+
 static GSettings *popup_settings, *interface_settings, *contrast_settings;
 static const char *token;
 static const char *broker_name;
@@ -877,7 +978,7 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
             gtk_header_bar_pack_start(GTK_HEADER_BAR(header->bar), button);
     }
     disable_actions(header);
-    header->menu = gtk_menu_button_new();
+    header->menu = header_menu_new();
     gtk_menu_button_set_use_popover(GTK_MENU_BUTTON(header->menu), FALSE);
     gtk_button_set_image(GTK_BUTTON(header->menu),
         gtk_image_new_from_icon_name("open-menu-symbolic", GTK_ICON_SIZE_BUTTON));

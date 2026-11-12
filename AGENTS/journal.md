@@ -1,5 +1,21 @@
 # Journal
 
+## 2026-11-12 — Guard the owned menu button's popup lifecycle
+
+- Use a private GtkMenuButton subclass only for the injected titlebar menu.
+  Accessible activation is synchronous in GTK; unlike a pointer grab, a second
+  programmatic toggle does not dismiss the stock GtkMenu. The owned button now
+  explicitly pops it down on inactive toggles and permits closing-state cleanup
+  even after its anchor is gone.
+- Reject opening from an unmapped, unrealized or destroying owner, including
+  reentry during the toggle's state change. The public popup path rechecks
+  liveness after anchor-property notifications before opening. No global GTK
+  class, engine file or alpha behavior changes.
+- Four additional mandatory-hit native cases cover programmatic open/close,
+  queued activation during owner teardown before the child drops its popup,
+  closure during state change and closure during anchor notifications. Source
+  checks pass; exact Linux execution and installed retest remain required.
+
 ## 2026-11-12 — Avoid descendant snapshots during active destruction
 
 - A callback entered from an earlier destroy handler now retains only the

@@ -66,7 +66,7 @@ static Header *fixture(GtkWidget **owned) {
     header->cancel = g_cancellable_new();
     header->bar = gtk_header_bar_new();
     gtk_window_set_titlebar(GTK_WINDOW(window), header->bar);
-    header->menu = gtk_menu_button_new();
+    header->menu = header_menu_new();
     gtk_header_bar_pack_end(GTK_HEADER_BAR(header->bar), header->menu);
     for (guint i = 0; i < G_N_ELEMENTS(header->buttons); i++) {
         header->buttons[i] = gtk_button_new();
@@ -218,6 +218,122 @@ static void focus_handoff_destroys_window(void) {
     g_object_unref(window);
 }
 
+static GtkWidget *fixture_popup(Header *header) {
+    GtkWidget *popup = g_object_ref_sink(gtk_menu_new());
+    gtk_menu_shell_append(GTK_MENU_SHELL(popup), gtk_menu_item_new_with_label("Fixture item"));
+    gtk_widget_show_all(popup);
+    gtk_widget_hide(popup);
+    gtk_menu_button_set_popup(GTK_MENU_BUTTON(header->menu), popup);
+    gtk_widget_set_sensitive(header->menu, TRUE);
+    return popup;
+}
+
+static void programmatic_menu_toggle_closes_popup(void) {
+    GtkWidget *window;
+    Header *header = fixture(&window);
+    GtkWidget *popup = fixture_popup(header);
+    g_assert_true(header_menu_anchor_live((NorviHeaderMenuButton *)header->menu));
+    /* GTK documents a nullable trigger event but warns for ATK/programmatic
+     * activation without one. This expected warning is not an invalid anchor. */
+    g_test_expect_message("Gtk", G_LOG_LEVEL_WARNING, "*no trigger event for menu popup*");
+    gtk_button_clicked(GTK_BUTTON(header->menu));
+    g_test_assert_expected_messages();
+    g_assert_true(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(header->menu)));
+    g_assert_true(gtk_widget_get_visible(popup));
+    gtk_button_clicked(GTK_BUTTON(header->menu));
+    g_assert_false(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(header->menu)));
+    g_assert_false(gtk_widget_get_visible(popup));
+    close_owner(window);
+    g_object_unref(popup);
+    g_object_unref(window);
+}
+
+static guint queued_menu_hits, state_close_hits, anchor_close_hits;
+static gboolean state_close_armed, anchor_close_armed;
+
+static gboolean queued_menu_click(gpointer data) {
+    GtkWidget *button = data;
+    GtkWidget *top = gtk_widget_get_toplevel(button);
+    queued_menu_hits++;
+    g_assert_true(GTK_IS_WINDOW(top));
+    g_assert_true(gtk_widget_in_destruction(top));
+    g_assert_false(gtk_widget_get_realized(top));
+    /* Catch the actual dangerous interval before the child is disposed and
+     * clears its popup. A fully disposed button would be a false-pass fixture. */
+    g_assert_nonnull(gtk_menu_button_get_popup(GTK_MENU_BUTTON(button)));
+    gtk_button_clicked(GTK_BUTTON(button));
+    g_assert_false(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)));
+    return G_SOURCE_REMOVE;
+}
+
+static void queued_menu_click_during_owner_teardown(void) {
+    GtkWidget *window;
+    Header *header = fixture(&window);
+    GtkWidget *popup = fixture_popup(header);
+    guint before = queued_menu_hits, pumps_before = destroy_pump_hits;
+    g_idle_add_full(G_PRIORITY_DEFAULT, queued_menu_click, g_object_ref(header->menu), g_object_unref);
+    destroy_pumps_context = TRUE;
+    close_owner(window);
+    g_assert_cmpuint(queued_menu_hits, ==, before + 1);
+    g_assert_cmpuint(destroy_pump_hits, ==, pumps_before + 1);
+    g_assert_false(gtk_widget_get_visible(popup));
+    g_object_unref(popup);
+    g_object_unref(window);
+}
+
+static void close_on_checked(GtkWidget *button, GtkStateFlags previous, gpointer data) {
+    (void)previous;
+    if (state_close_armed && (gtk_widget_get_state_flags(button) & GTK_STATE_FLAG_CHECKED)) {
+        state_close_armed = FALSE;
+        state_close_hits++;
+        close_owner(data);
+    }
+}
+
+static void menu_toggle_state_closes_owner(void) {
+    GtkWidget *window;
+    Header *header = fixture(&window);
+    GtkWidget *popup = fixture_popup(header);
+    GtkWidget *button = g_object_ref(header->menu);
+    guint before = state_close_hits;
+    state_close_armed = TRUE;
+    g_signal_connect(button, "state-flags-changed", G_CALLBACK(close_on_checked), window);
+    gtk_button_clicked(GTK_BUTTON(button));
+    g_assert_cmpuint(state_close_hits, ==, before + 1);
+    g_assert_false(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)));
+    g_assert_false(gtk_widget_get_visible(popup));
+    g_object_unref(button);
+    g_object_unref(popup);
+    g_object_unref(window);
+}
+
+static void close_on_anchor(GObject *object, GParamSpec *property, gpointer data) {
+    (void)object;
+    (void)property;
+    if (anchor_close_armed) {
+        anchor_close_armed = FALSE;
+        anchor_close_hits++;
+        close_owner(data);
+    }
+}
+
+static void menu_anchor_notification_closes_owner(void) {
+    GtkWidget *window;
+    Header *header = fixture(&window);
+    GtkWidget *popup = fixture_popup(header);
+    GtkWidget *button = g_object_ref(header->menu);
+    guint before = anchor_close_hits;
+    anchor_close_armed = TRUE;
+    g_signal_connect(popup, "notify::anchor-hints", G_CALLBACK(close_on_anchor), window);
+    gtk_button_clicked(GTK_BUTTON(button));
+    g_assert_cmpuint(anchor_close_hits, ==, before + 1);
+    g_assert_false(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(button)));
+    g_assert_false(gtk_widget_get_visible(popup));
+    g_object_unref(button);
+    g_object_unref(popup);
+    g_object_unref(window);
+}
+
 int main(int argc, char **argv) {
     g_test_init(&argc, &argv, NULL);
     /* Missing display is a failed native check, never a successful skip. */
@@ -230,5 +346,9 @@ int main(int argc, char **argv) {
     g_test_add_func("/native-header/lifecycle/menu-install-destroy", menu_install_destroys_window);
     g_test_add_func("/native-header/lifecycle/async-description-destroy", async_description_destroys_window);
     g_test_add_func("/native-header/lifecycle/focus-handoff-destroy", focus_handoff_destroys_window);
+    g_test_add_func("/native-header/lifecycle/programmatic-menu-toggle", programmatic_menu_toggle_closes_popup);
+    g_test_add_func("/native-header/lifecycle/queued-menu-click-teardown", queued_menu_click_during_owner_teardown);
+    g_test_add_func("/native-header/lifecycle/menu-toggle-state-destroy", menu_toggle_state_closes_owner);
+    g_test_add_func("/native-header/lifecycle/menu-anchor-notify-destroy", menu_anchor_notification_closes_owner);
     return g_test_run();
 }
