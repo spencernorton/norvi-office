@@ -5,6 +5,7 @@ cd "$(dirname "$0")/.."
 rm -f out/candidate/norvi-office_*.deb out/candidate/SHA256SUMS.txt
 rm -f out/reproduction/norvi-office_*.deb out/reproduction/SHA256SUMS.txt
 scripts/check.sh
+gjs -m tests/test_native_geometry.js
 bash norvi-office/experiments/native-header/build.sh /tmp/norvi-office-tests/ci-build
 python3 -m unittest discover -s norvi-office/experiments/wayland-glass -p test_geometry.py -v
 python3 scripts/build.py --output out/candidate

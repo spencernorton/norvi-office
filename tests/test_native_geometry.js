@@ -1,0 +1,51 @@
+import {selectGeometry, titlebarGeometry, nativeBackdrop} from '../norvi-office/experiments/wayland-glass/extension/geometryPolicy.js';
+
+const observed = {edge: 164, join: 52, join_start: 45};
+const cases = [
+    [[], null],
+    [[observed], observed],
+    [[observed, {...observed}], observed],
+    [[observed, {...observed, edge: 120}], null],
+    [[observed, {...observed, join: 54}], null],
+    [[observed, {...observed, join_start: 48}], null],
+];
+for (const [input, expected] of cases) {
+    if (selectGeometry(input) !== expected)
+        throw new Error('Unsafe or unnecessarily ambiguous desktop boundary');
+}
+print(`${cases.length} native geometry policy checks passed`);
+
+// Either order can be observed around a client buffer commit. A growing ribbon
+// must never extend the native mask beyond the fixed titlebar in either frame.
+const oldFrame = {edge: 104, join: 52, join_start: 45};
+const newFrame = {edge: 188, join: 52, join_start: 45};
+for (const geometry of [oldFrame, newFrame, oldFrame]) {
+    const safe = titlebarGeometry(geometry);
+    if (safe?.edge !== 45 || safe.edge >= oldFrame.edge || safe.edge >= newFrame.edge)
+        throw new Error('Unqualified ribbon expansion reached document pixels');
+}
+for (const geometry of [null, {...observed, join_start: undefined}, {...observed, join_start: 0},
+    {...observed, join_start: 60}, {...observed, join_start: 164}]) {
+    if (titlebarGeometry(geometry) !== null)
+        throw new Error('Missing or invalid titlebar geometry did not fail opaque');
+}
+print('8 native titlebar-only safety checks passed');
+
+const nativeReports = [oldFrame, newFrame, oldFrame].map(geometry =>
+    ({...geometry, client_alpha: true, at: 100}));
+for (const report of nativeReports) {
+    const policy = nativeBackdrop([report], 101, 600, true, true);
+    if (policy.mask !== false || policy.blur !== true)
+        throw new Error('A report granted native compositor alpha or lost the fixed backdrop');
+}
+for (const [reports, now, supported, dark] of [
+    [[], 101, true, true], [[{...nativeReports[0], client_alpha: false}], 101, true, true],
+    [[{...nativeReports[0], client_alpha: undefined}], 101, true, true],
+    [nativeReports, 700, true, true], [nativeReports, 99, true, true],
+    [nativeReports, 101, false, true], [nativeReports, 101, true, false],
+]) {
+    const policy = nativeBackdrop(reports, now, 600, supported, dark);
+    if (policy.mask !== false || policy.blur !== false)
+        throw new Error('Unsupported client state did not remove the native backdrop');
+}
+print('10 native client-buffer/backdrop safety checks passed');

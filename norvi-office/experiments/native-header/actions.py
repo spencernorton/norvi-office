@@ -7,11 +7,13 @@ import time
 
 import uno
 import unohelper
+from urllib.parse import unquote, urlsplit
 
 from com.sun.star.frame import XStatusListener
 from gi.repository import Gio, GLib
 
 from routing import COMMANDS, matching_frame, uses_pipe
+from uno_utils import verify_profile
 
 API = """<node><interface name="dev.norvi.OfficeHeader">
   <method name="Describe">
@@ -54,6 +56,9 @@ class Broker:
         else:
             raise RuntimeError("Private LibreOffice pipe did not become available")
         manager = self.context.ServiceManager
+        expected_profile = os.environ.get("NORVI_OFFICE_PROFILE_URI")
+        if expected_profile:
+            verify_profile(self.context, Path(unquote(urlsplit(expected_profile).path)))
         self.desktop = manager.createInstanceWithContext("com.sun.star.frame.Desktop", self.context)
         self.transformer = manager.createInstanceWithContext("com.sun.star.util.URLTransformer", self.context)
         self.dispatcher = manager.createInstanceWithContext("com.sun.star.frame.DispatchHelper", self.context)
@@ -63,7 +68,8 @@ class Broker:
             self.call, None, None,
         )
         self.owner = Gio.bus_own_name_on_connection(
-            self.bus, "dev.norvi.OfficeHeader", Gio.BusNameOwnerFlags.NONE, None, None,
+            self.bus, os.environ.get("NORVI_OFFICE_HEADER_BUS", "dev.norvi.OfficeHeader"),
+            Gio.BusNameOwnerFlags.NONE, None, None,
         )
 
     def frame(self, sender, pid, handle, identity, token, bind=False):
@@ -127,8 +133,9 @@ class Broker:
 
 
 if __name__ == "__main__":
-    root = os.environ.get("NORVI_OFFICE_TEST_DIR")
-    if not root or os.environ.get("XDG_CONFIG_HOME") != str(Path(root) / "config"):
+    root = os.environ.get("NORVI_OFFICE_SESSION_DIR") or os.environ.get("NORVI_OFFICE_TEST_DIR")
+    desktop = root and os.environ.get("NORVI_OFFICE_SESSION_DIR") == root and Path(root, "native-session.json").is_file()
+    if not root or (not desktop and os.environ.get("XDG_CONFIG_HOME") != str(Path(root) / "config")):
         sys.exit("Run the isolated native header harness.")
     token = os.environ["NORVI_OFFICE_HEADER_TOKEN"]
     broker = Broker(sys.argv[1], token)

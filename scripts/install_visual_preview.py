@@ -16,35 +16,54 @@ def digest(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def trust_desktop(path):
+    subprocess.run(["gio", "set", str(path), "metadata::trusted", "true"], check=True)
+
+
 def locations():
     home = Path.home()
     data = Path(os.environ.get("XDG_DATA_HOME", home / ".local/share"))
-    return home, data, data / "norvi-office/visual-preview/shortcuts.json"
+    desktop = Path(subprocess.check_output(["xdg-user-dir", "DESKTOP"], text=True).strip())
+    if not desktop.is_absolute() or desktop == home:
+        raise ValueError("A separate desktop directory is required for preview icons")
+    return home, data, desktop, data / "norvi-office/visual-preview/shortcuts.json"
 
 
-def expected_paths(home, data):
+def expected_paths(home, data, desktop=None):
     return {home / ".local/bin/norvi-office-preview", home / ".local/bin/norvi-office-preview-remove",
-            *(data / "applications" / f"norvi-office-preview-{app}.desktop" for app in ("calc", "writer"))}
+            *(data / "applications" / f"norvi-office-preview-{app}.desktop" for app in ("calc", "writer")),
+            *((desktop / f"Office Preview - {app}.desktop" for app in ("calc", "writer")) if desktop else ())}
 
 
-def managed(manifest, home, data):
+def managed(manifest, home, data, desktop):
     if not manifest.exists():
-        if any(path.exists() for path in expected_paths(home, data)):
+        if any(path.exists() or path.is_symlink() for path in expected_paths(home, data, desktop)):
             raise ValueError("A preview shortcut already exists outside this installer; preserved it")
         return []
     records = json.loads(manifest.read_text())["files"]
-    if {Path(r["path"]) for r in records} != expected_paths(home, data):
+    paths = {Path(r["path"]) for r in records}
+    if len(paths) != len(records) or paths not in (expected_paths(home, data), expected_paths(home, data, desktop)):
         raise ValueError("Unrecognized preview shortcut manifest")
     for record in records:
         target = Path(record["path"])
         if target.is_symlink() or not target.is_file() or digest(target) != record["sha256"]:
             raise ValueError(f"A preview shortcut changed after installation; preserved it: {target.name}")
+    # Upgrade app-menu-only installs. Adopt an existing desktop copy only when
+    # it exactly matches its already verified, managed application entry.
+    for app in ("calc", "writer"):
+        target = desktop / f"Office Preview - {app}.desktop"
+        if target in paths or not (target.exists() or target.is_symlink()):
+            continue
+        source = data / "applications" / f"norvi-office-preview-{app}.desktop"
+        if target.is_symlink() or not target.is_file() or digest(target) != digest(source):
+            raise ValueError(f"An unmanaged desktop shortcut already exists; preserved it: {target.name}")
+        records.append({"path": str(target), "sha256": digest(target)})
     return records
 
 
 def install():
-    home, data, manifest = locations()
-    managed(manifest, home, data)
+    home, data, desktop_directory, manifest = locations()
+    managed(manifest, home, data, desktop_directory)
     source = ROOT / "norvi-office/experiments"
     files = sorted(path for name in ("native-header", "wayland-glass", "preview")
                    for path in (source / name).rglob("*")
@@ -76,6 +95,7 @@ def install():
                    "Icon=/usr/share/norvi-office/startup/assets/office.png\n"
                    f"Exec={quoted} --show-errors --app {app}\nTerminal=false\nStartupNotify=true\nCategories=Office;\n")
         contents[data / "applications" / f"norvi-office-preview-{app}.desktop"] = (desktop, 0o644)
+        contents[desktop_directory / f"Office Preview - {app}.desktop"] = (desktop, 0o755)
     # Validate both new desktop entries before replacing any shortcuts.
     for target, (text, _mode) in contents.items():
         if target.suffix == ".desktop":
@@ -92,14 +112,17 @@ def install():
         temporary.replace(target)
         records.append({"path": str(target), "sha256": digest(target)})
     manifest.write_text(json.dumps({"payload": str(payload), "files": records}, indent=2) + "\n")
+    for target in contents:
+        if target.parent == desktop_directory:
+            trust_desktop(target)
     subprocess.run(["update-desktop-database", str(data / "applications")], check=True)
-    print("Installed Office Preview — Calc and Office Preview — Writer")
+    print("Installed Office Preview — Calc and Office Preview — Writer on the desktop and in the app menu")
     print("Undo: norvi-office-preview-remove (preview documents are retained)")
 
 
 def uninstall():
-    home, data, manifest = locations()
-    records = managed(manifest, home, data)
+    home, data, desktop, manifest = locations()
+    records = managed(manifest, home, data, desktop)
     for record in records:
         Path(record["path"]).unlink()
     manifest.unlink(missing_ok=True)
