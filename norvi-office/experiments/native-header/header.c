@@ -744,6 +744,36 @@ static gboolean refresh(gpointer data) {
     return G_SOURCE_CONTINUE;
 }
 
+typedef struct { Header *header; guint id; GSourceFunc callback; } HeaderTimer;
+
+static void header_timer_free(gpointer data) {
+    HeaderTimer *timer = data;
+    /* Returning REMOVE can precede our window::destroy handler when another
+     * destroy handler runs a nested main loop. Never retain its removed ID. */
+    if (timer->header->timer == timer->id)
+        timer->header->timer = 0;
+    header_unref(timer->header);
+    g_free(timer);
+}
+
+static gboolean header_timer_dispatch(gpointer data) {
+    HeaderTimer *timer = data;
+    Header *header = header_ref(timer->header);
+    GSourceFunc callback = timer->callback;
+    /* The callback can remove and free its own HeaderTimer. */
+    gboolean keep = callback(header);
+    header_unref(header);
+    return keep;
+}
+
+static void start_header_timer(Header *header, guint interval, GSourceFunc callback) {
+    HeaderTimer *timer = g_new0(HeaderTimer, 1);
+    timer->header = header_ref(header);
+    timer->callback = callback;
+    timer->id = g_timeout_add_full(G_PRIORITY_DEFAULT, interval, header_timer_dispatch, timer, header_timer_free);
+    header->timer = timer->id;
+}
+
 static gboolean calc_caption(GBinding *binding, const GValue *source,
         GValue *target, gpointer data) {
     (void)binding;
@@ -851,7 +881,7 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
     gtk_header_bar_pack_end(GTK_HEADER_BAR(header->bar), header->menu);
     connect_header(window, "key-press-event", G_CALLBACK(header_key), header, 0);
     gtk_widget_show_all(header->bar);
-    header->timer = g_timeout_add_full(G_PRIORITY_DEFAULT, 350, refresh, header_ref(header), header_unref);
+    start_header_timer(header, 350, refresh);
     connect_header(window, "draw", G_CALLBACK(chrome_draw), header, G_CONNECT_AFTER);
     return TRUE;
 }

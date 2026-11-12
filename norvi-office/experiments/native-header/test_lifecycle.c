@@ -10,6 +10,8 @@ static gboolean close_on_states;
 static guint state_hits, menu_hits, sensitivity_hits, timer_hits;
 static guint focus_hits;
 static gboolean close_menu_armed;
+static gboolean destroy_pumps_context;
+static guint destroy_pump_hits;
 
 G_DEFINE_TYPE(ClosingAccessible, closing_accessible, GTK_TYPE_WINDOW_ACCESSIBLE)
 G_DEFINE_TYPE(ClosingWindow, closing_window, GTK_TYPE_WINDOW)
@@ -44,6 +46,16 @@ static void closing_window_class_init(ClosingWindowClass *klass) {
 }
 static void closing_window_init(ClosingWindow *self) { (void)self; }
 
+static void pump_before_destroy(GtkWidget *widget, gpointer data) {
+    (void)widget;
+    (void)data;
+    if (!destroy_pumps_context)
+        return;
+    destroy_pumps_context = FALSE;
+    destroy_pump_hits++;
+    for (guint i = 0; i < 64 && g_main_context_iteration(NULL, FALSE); i++) {}
+}
+
 static Header *fixture(GtkWidget **owned) {
     GtkWidget *window = g_object_ref_sink(g_object_new(closing_window_get_type(), NULL));
     gtk_window_set_default_size(GTK_WINDOW(window), 640, 480);
@@ -61,6 +73,7 @@ static Header *fixture(GtkWidget **owned) {
         gtk_header_bar_pack_start(GTK_HEADER_BAR(header->bar), header->buttons[i]);
     }
     g_object_set_data_full(G_OBJECT(window), "norvi-header", header, header_unref);
+    g_signal_connect(window, "destroy", G_CALLBACK(pump_before_destroy), NULL);
     connect_header(window, "destroy", G_CALLBACK(destroyed), header, 0);
     gtk_widget_show_all(window);
     gtk_widget_realize(window);
@@ -92,7 +105,7 @@ static void timer_destroyed_during_atk(void) {
     Header *header = fixture(&window);
     guint before = state_hits;
     guint timers_before = timer_hits;
-    header->timer = g_timeout_add_full(G_PRIORITY_DEFAULT, 1, refresh_from_timer, header_ref(header), header_unref);
+    start_header_timer(header, 1, refresh_from_timer);
     guint timer = header->timer;
     close_on_states = FALSE;
     gint64 deadline = g_get_monotonic_time() + G_TIME_SPAN_SECOND;
@@ -102,6 +115,27 @@ static void timer_destroyed_during_atk(void) {
     g_assert_cmpuint(timer_hits, ==, timers_before + 1);
     g_assert_null(g_main_context_find_source_by_id(NULL, timer));
     g_assert_null(g_object_get_data(G_OBJECT(window), "norvi-header"));
+    g_object_unref(window);
+}
+
+static gboolean refresh_counted(gpointer data) {
+    timer_hits++;
+    return refresh(data);
+}
+
+static void earlier_destroy_handler_removes_timer(void) {
+    GtkWidget *window;
+    Header *header = fixture(&window);
+    guint before = timer_hits, pumps_before = destroy_pump_hits;
+    start_header_timer(header, 0, refresh_counted);
+    guint timer = header->timer;
+    destroy_pumps_context = TRUE;
+    gtk_widget_destroy(window);
+    g_assert_cmpuint(destroy_pump_hits, ==, pumps_before + 1);
+    g_assert_cmpuint(timer_hits, ==, before + 1);
+    g_assert_cmpuint(header->timer, ==, 0);
+    g_assert_null(g_main_context_find_source_by_id(NULL, timer));
+    g_object_set_data(G_OBJECT(window), "norvi-header", NULL);
     g_object_unref(window);
 }
 
@@ -192,6 +226,7 @@ int main(int argc, char **argv) {
     native_desktop = TRUE;
     g_test_add_func("/native-header/lifecycle/report-atk-destroy", report_destroyed_during_atk);
     g_test_add_func("/native-header/lifecycle/timer-atk-destroy", timer_destroyed_during_atk);
+    g_test_add_func("/native-header/lifecycle/earlier-destroy-handler", earlier_destroy_handler_removes_timer);
     g_test_add_func("/native-header/lifecycle/menu-install-destroy", menu_install_destroys_window);
     g_test_add_func("/native-header/lifecycle/async-description-destroy", async_description_destroys_window);
     g_test_add_func("/native-header/lifecycle/focus-handoff-destroy", focus_handoff_destroys_window);

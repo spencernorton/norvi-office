@@ -1,5 +1,15 @@
 # Journal
 
+## 2026-11-12 — Clear timer identity during nested teardown
+
+- A destroy handler registered earlier can pump the main context before the
+  header's own handler runs. Its timer may then return REMOVE while the window
+  is already in destruction. Source teardown now clears the matching recorded
+  timer ID before releasing callback ownership, preventing a later stale-ID
+  removal. Dispatch retains the header even when its own source is removed.
+- Added a sixth mandatory-hit GTK case that pumps an actual ready timer from
+  the earlier destroy handler. Native execution remains a separate check.
+
 ## 2026-11-12 — Guard native callbacks against reentrant document closure
 
 - ATK geometry providers, menu models and GTK notifications can close their
