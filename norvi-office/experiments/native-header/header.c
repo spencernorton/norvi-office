@@ -84,59 +84,127 @@ static void header_unref(gpointer data) {
     g_free(header);
 }
 
+/* GTK/ATK/model callbacks can close a document or run a nested main loop.
+ * Keep callback data and borrowed widgets alive, then check logical liveness
+ * again after every call into those providers. A ref alone is not liveness. */
+typedef struct {
+    Header *header;
+    GtkWidget *window, *bar, *menu, *buttons[5];
+    GMenuModel *model;
+    GActionGroup *actions;
+} HeaderCall;
+
+static HeaderCall header_call(Header *header) {
+    HeaderCall call = {.header = header_ref(header)};
+    if (header->window)
+        call.window = g_object_ref(header->window);
+    if (header->bar)
+        call.bar = g_object_ref(header->bar);
+    if (header->menu)
+        call.menu = g_object_ref(header->menu);
+    for (guint i = 0; i < G_N_ELEMENTS(call.buttons); i++)
+        if (header->buttons[i])
+            call.buttons[i] = g_object_ref(header->buttons[i]);
+    if (header->model)
+        call.model = g_object_ref(header->model);
+    if (header->actions)
+        call.actions = g_object_ref(header->actions);
+    return call;
+}
+
+static gboolean header_call_live(const HeaderCall *call) {
+    return !call->header->destroyed && call->window && call->header->window == call->window &&
+        !gtk_widget_in_destruction(call->window);
+}
+
+static void header_call_clear(HeaderCall *call) {
+    g_clear_object(&call->model);
+    g_clear_object(&call->actions);
+    for (guint i = 0; i < G_N_ELEMENTS(call->buttons); i++)
+        g_clear_object(&call->buttons[i]);
+    g_clear_object(&call->menu);
+    g_clear_object(&call->bar);
+    g_clear_object(&call->window);
+    header_unref(call->header);
+}
+
+G_DEFINE_AUTO_CLEANUP_CLEAR_FUNC(HeaderCall, header_call_clear)
+
+static void signal_header_unref(gpointer data, GClosure *closure) {
+    (void)closure;
+    header_unref(data);
+}
+
+static gulong connect_header(gpointer object, const gchar *signal, GCallback callback,
+        Header *header, GConnectFlags flags) {
+    return g_signal_connect_data(object, signal, callback, header_ref(header), signal_header_unref, flags);
+}
+
 static void destroyed(GtkWidget *widget, gpointer data) {
     (void)widget;
-    Header *header = data;
+    Header *header = header_ref(data);
     header->destroyed = TRUE;
     if (header->clock && header->frame_handler) {
-        g_signal_handler_disconnect(header->clock, header->frame_handler);
+        gulong handler = header->frame_handler;
         header->frame_handler = 0;
+        g_signal_handler_disconnect(header->clock, handler);
     }
     header->window = NULL;
+    header->bar = header->menu = NULL;
+    memset(header->buttons, 0, sizeof(header->buttons));
     if (header->timer) {
-        g_source_remove(header->timer);
+        guint timer = header->timer;
         header->timer = 0;
+        g_source_remove(timer);
     }
     g_cancellable_cancel(header->cancel);
+    header_unref(header);
 }
 
 static void disable_actions(Header *header) {
-    for (guint i = 0; i < G_N_ELEMENTS(commands); i++)
-        gtk_widget_set_sensitive(header->buttons[i], FALSE);
+    g_auto(HeaderCall) call = header_call(header);
+    for (guint i = 0; header_call_live(&call) && i < G_N_ELEMENTS(commands); i++)
+        if (call.buttons[i])
+            gtk_widget_set_sensitive(call.buttons[i], FALSE);
 }
 
 typedef struct { Header *header; } Request;
 
 static guint64 window_handle(Header *header) {
-    if (header->destroyed || !gtk_widget_get_realized(header->window))
+    g_auto(HeaderCall) call = header_call(header);
+    if (!header_call_live(&call) || !gtk_widget_get_realized(call.window))
         return 0;
-    GdkWindow *surface = gtk_widget_get_window(header->window);
-    if (!GDK_IS_WAYLAND_DISPLAY(gdk_window_get_display(surface)))
+    GdkWindow *surface = gtk_widget_get_window(call.window);
+    if (!surface || !GDK_IS_WAYLAND_DISPLAY(gdk_window_get_display(surface)))
         return 0;
     return (guint64)(guintptr)gdk_wayland_window_get_wl_surface(surface);
 }
 
 typedef struct { gint x, y, width, height; } ChromeRect;
 
-static gboolean chrome_rect(AtkObject *object, ChromeRect *rect) {
-    if (!object || !ATK_IS_COMPONENT(object))
+static gboolean chrome_rect(HeaderCall *call, AtkObject *object, ChromeRect *rect) {
+    if (!header_call_live(call) || !object || !ATK_IS_COMPONENT(object))
         return FALSE;
     AtkStateSet *states = atk_object_ref_state_set(object);
     if (!states)
         return FALSE;
-    gboolean showing = atk_state_set_contains_state(states, ATK_STATE_VISIBLE) &&
+    gboolean showing = header_call_live(call) && atk_state_set_contains_state(states, ATK_STATE_VISIBLE) &&
         atk_state_set_contains_state(states, ATK_STATE_SHOWING);
     g_object_unref(states);
-    if (!showing)
+    if (!showing || !header_call_live(call))
         return FALSE;
     atk_component_get_extents(ATK_COMPONENT(object), &rect->x, &rect->y,
         &rect->width, &rect->height, ATK_XY_WINDOW);
-    return rect->x >= 0 && rect->y >= 0 && rect->width > 0 && rect->height > 0;
+    return header_call_live(call) && rect->x >= 0 && rect->y >= 0 && rect->width > 0 && rect->height > 0;
 }
 
 /* Only inspect chrome containers. Never walk a document, table or its cells. */
-static void chrome_roots(AtkObject *object, guint depth, AtkObject **found, guint *count) {
+static void chrome_roots(HeaderCall *call, AtkObject *object, guint depth, AtkObject **found, guint *count) {
+    if (!header_call_live(call))
+        return;
     AtkRole role = atk_object_get_role(object);
+    if (!header_call_live(call))
+        return;
     if (role == ATK_ROLE_ROOT_PANE) {
         (*count)++;
         if (!*found)
@@ -146,48 +214,62 @@ static void chrome_roots(AtkObject *object, guint depth, AtkObject **found, guin
     if (depth >= 4 || (role != ATK_ROLE_FRAME && role != ATK_ROLE_PANEL && role != ATK_ROLE_FILLER))
         return;
     gint children = atk_object_get_n_accessible_children(object);
+    if (!header_call_live(call))
+        return;
     if (children < 0 || children > 64) {
         *count = 2;
         return;
     }
-    for (gint i = 0; i < children; i++) {
+    for (gint i = 0; header_call_live(call) && i < children; i++) {
         AtkObject *child = atk_object_ref_accessible_child(object, i);
         if (child) {
-            chrome_roots(child, depth + 1, found, count);
+            chrome_roots(call, child, depth + 1, found, count);
             g_object_unref(child);
         }
     }
 }
 
 static gboolean native_geometry(Header *header, gint geometry[5]) {
-    AtkObject *frame = gtk_widget_get_accessible(header->window);
+    g_auto(HeaderCall) call = header_call(header);
+    if (!header_call_live(&call) || !call.bar)
+        return FALSE;
+    AtkObject *accessible = gtk_widget_get_accessible(call.window);
+    g_autoptr(GObject) frame_owner = accessible ? G_OBJECT(g_object_ref(accessible)) : NULL;
+    AtkObject *frame = frame_owner ? ATK_OBJECT(frame_owner) : NULL;
     AtkObject *pane = NULL;
     guint roots = 0, bodies = 0;
     ChromeRect bounds = {0}, root = {0}, body = {0}, bar = {0};
-    if (!frame || !chrome_rect(frame, &bounds))
+    if (!frame || !chrome_rect(&call, frame, &bounds))
         return FALSE;
-    chrome_roots(frame, 0, &pane, &roots);
-    gboolean valid = roots == 1 && pane && chrome_rect(pane, &root);
+    chrome_roots(&call, frame, 0, &pane, &roots);
+    gboolean valid = header_call_live(&call) && roots == 1 && pane && chrome_rect(&call, pane, &root);
     if (valid) {
         gint children = atk_object_get_n_accessible_children(pane);
-        valid = children >= 0 && children <= 64;
+        valid = header_call_live(&call) && children >= 0 && children <= 64;
         for (gint i = 0; valid && i < children; i++) {
             AtkObject *child = atk_object_ref_accessible_child(pane, i);
             ChromeRect box;
-            if (child && atk_object_get_role(child) == ATK_ROLE_PANEL && chrome_rect(child, &box) &&
+            if (header_call_live(&call) && child && atk_object_get_role(child) == ATK_ROLE_PANEL &&
+                    chrome_rect(&call, child, &box) &&
                     box.width > root.width / 2 && box.height > root.height / 2) {
                 body = box;
                 bodies++;
             }
             g_clear_object(&child);
+            valid = valid && header_call_live(&call);
         }
         valid = valid && bodies == 1 && root.y < body.y && body.y < bounds.height / 2 &&
             root.x <= body.x && body.x + body.width <= root.x + root.width &&
             body.y + body.height <= root.y + root.height &&
-            chrome_rect(gtk_widget_get_accessible(header->bar), &bar);
+            header_call_live(&call);
+        if (valid) {
+            AtkObject *object = gtk_widget_get_accessible(call.bar);
+            g_autoptr(GObject) bar_owner = object ? G_OBJECT(g_object_ref(object)) : NULL;
+            valid = chrome_rect(&call, bar_owner ? ATK_OBJECT(bar_owner) : NULL, &bar);
+        }
     }
     g_clear_object(&pane);
-    if (!valid)
+    if (!valid || !header_call_live(&call))
         return FALSE;
     geometry[0] = bounds.width;
     geometry[1] = bounds.height;
@@ -198,6 +280,12 @@ static gboolean native_geometry(Header *header, gint geometry[5]) {
 }
 
 static void geometry_receipt(Header *header, const gint measured[5], gboolean changed) {
+    g_auto(HeaderCall) call = header_call(header);
+    if (!header_call_live(&call))
+        return;
+    /* The opaque installed path needs initial/changed diagnostics only. */
+    if (!client_glass && !changed)
+        return;
     gint64 now = g_get_monotonic_time();
     if (!changed && now - header->receipt_at < 250000)
         return;
@@ -229,17 +317,23 @@ static void geometry_receipt(Header *header, const gint measured[5], gboolean ch
 }
 
 static gboolean report_native_geometry(Header *header, const gint *current) {
-    if (!native_desktop || header->destroyed || !header->bus || !window_handle(header))
+    g_auto(HeaderCall) call = header_call(header);
+    if (!native_desktop || !header_call_live(&call))
         return FALSE;
-    gint measured[5] = {gtk_widget_get_allocated_width(header->window),
-        gtk_widget_get_allocated_height(header->window), 0, 0, 0};
+    gint measured[5] = {gtk_widget_get_allocated_width(call.window),
+        gtk_widget_get_allocated_height(call.window), 0, 0, 0};
     if (current)
         memcpy(measured, current, sizeof(measured));
     else if (!native_geometry(header, measured))
         measured[2] = measured[3] = measured[4] = 0;
-    const gchar *title = gtk_window_get_title(GTK_WINDOW(header->window));
+    if (!header_call_live(&call))
+        return FALSE;
+    guint64 handle = window_handle(header);
+    if (!handle || !header->bus)
+        return FALSE;
+    g_autofree gchar *title = g_strdup(gtk_window_get_title(GTK_WINDOW(call.window)));
     if (!title)
-        title = "";
+        title = g_strdup("");
     gint64 now = g_get_monotonic_time();
     gboolean changed = memcmp(measured, header->geometry, sizeof(measured)) != 0 ||
         g_strcmp0(title, header->reported_title) != 0;
@@ -249,13 +343,15 @@ static gboolean report_native_geometry(Header *header, const gint *current) {
     GVariant *reply = g_dbus_connection_call_sync(header->bus, "org.gnome.Shell",
         "/dev/norvi/OfficeGeometry", "dev.norvi.OfficeGeometry",
         client_glass ? "ReportClientGlass" : "ReportNative",
-        g_variant_new("(tsiiiii)", window_handle(header), title,
+        g_variant_new("(tsiiiii)", handle, title,
             measured[0], measured[1], measured[2], measured[3], measured[4]),
-        G_VARIANT_TYPE("(b)"), G_DBUS_CALL_FLAGS_NO_AUTO_START, 100, NULL, NULL);
+        G_VARIANT_TYPE("(b)"), G_DBUS_CALL_FLAGS_NO_AUTO_START, 100, header->cancel, NULL);
     gboolean acknowledged = FALSE;
     if (reply)
         g_variant_get(reply, "(b)", &acknowledged);
     g_clear_pointer(&reply, g_variant_unref);
+    if (!header_call_live(&call))
+        return FALSE;
     gboolean lost = header->geometry_ack && !acknowledged;
     changed = changed || acknowledged != header->geometry_ack;
     header->geometry_ack = acknowledged;
@@ -265,36 +361,44 @@ static gboolean report_native_geometry(Header *header, const gint *current) {
     header->reported_at = now;
     geometry_receipt(header, measured, changed);
     if (client_glass && lost)
-        gtk_widget_queue_draw(header->window);
+        gtk_widget_queue_draw(call.window);
     return acknowledged;
 }
 
 static void complete_frame(GdkFrameClock *clock, gpointer data) {
     Header *header = data;
-    if (header->destroyed || !gtk_widget_get_mapped(header->window))
+    g_auto(HeaderCall) call = header_call(header);
+    if (!header_call_live(&call) || !gtk_widget_get_mapped(call.window))
         return;
     /* Expand damage before GDK allocates the paint buffer. This does not start
      * a continuous animation; it runs only on frames GTK already requested.
      * Full repaint is an intentional, measurable experimental performance cost. */
     header->complete_frame = gdk_frame_clock_get_frame_counter(clock);
-    gdk_window_invalidate_rect(gtk_widget_get_window(header->window), NULL, TRUE);
+    GdkWindow *surface = gtk_widget_get_window(call.window);
+    if (surface)
+        gdk_window_invalidate_rect(surface, NULL, TRUE);
 }
 
 static void glass_realized(GtkWidget *widget, gpointer data) {
     Header *header = data;
-    if (header->clock)
+    g_auto(HeaderCall) call = header_call(header);
+    if (!header_call_live(&call) || header->clock)
         return;
     header->clock = g_object_ref(gtk_widget_get_frame_clock(widget));
-    header->frame_handler = g_signal_connect(header->clock, "before-paint",
-        G_CALLBACK(complete_frame), header);
+    header->frame_handler = connect_header(header->clock, "before-paint",
+        G_CALLBACK(complete_frame), header, 0);
     gtk_widget_queue_draw(widget);
 }
 
 static void glass_unrealized(GtkWidget *widget, gpointer data) {
     (void)widget;
     Header *header = data;
-    if (header->clock && header->frame_handler)
-        g_signal_handler_disconnect(header->clock, header->frame_handler);
+    g_auto(HeaderCall) call = header_call(header);
+    if (header->clock && header->frame_handler) {
+        gulong handler = header->frame_handler;
+        header->frame_handler = 0;
+        g_signal_handler_disconnect(header->clock, handler);
+    }
     header->frame_handler = 0;
     header->complete_frame = -1;
     g_clear_object(&header->clock);
@@ -320,7 +424,8 @@ static gboolean glass_appearance(GtkWidget *widget) {
 
 static gboolean chrome_draw(GtkWidget *widget, cairo_t *context, gpointer data) {
     Header *header = data;
-    if (!native_desktop)
+    g_auto(HeaderCall) call = header_call(header);
+    if (!native_desktop || !header_call_live(&call))
         return FALSE;
     const char *previous_mode = header->glass_mode;
     header->draws++;
@@ -328,8 +433,10 @@ static gboolean chrome_draw(GtkWidget *widget, cairo_t *context, gpointer data) 
     gint measured[5] = {gtk_widget_get_allocated_width(widget),
         gtk_widget_get_allocated_height(widget), 0, 0, 0};
     gboolean geometry = native_geometry(header, measured);
+    if (!header_call_live(&call))
+        return FALSE;
     gboolean acknowledged = report_native_geometry(header, measured);
-    if (!client_glass)
+    if (!client_glass || !header_call_live(&call))
         return FALSE;
     /* Shell acknowledges backdrop capability, never a particular buffer. It
      * cannot change surface alpha in this protocol. Every alpha write below
@@ -372,23 +479,34 @@ static void request_free(Request *request) {
     g_free(request);
 }
 
+static void apply_description(Header *header, GVariant *states) {
+    g_auto(HeaderCall) call = header_call(header);
+    if (!header_call_live(&call) || header->activating)
+        return;
+    disable_actions(header);
+    for (guint i = 0; states && header_call_live(&call) && !header->activating &&
+            i < G_N_ELEMENTS(commands); i++) {
+        gboolean enabled = FALSE;
+        g_variant_lookup(states, commands[i], "b", &enabled);
+        if (call.buttons[i])
+            gtk_widget_set_sensitive(call.buttons[i], enabled);
+    }
+}
+
 static void described(GObject *source, GAsyncResult *result, gpointer data) {
     Request *request = data;
     Header *header = request->header;
+    g_auto(HeaderCall) call = header_call(header);
     GError *error = NULL;
     GVariant *reply = g_dbus_connection_call_finish(G_DBUS_CONNECTION(source), result, &error);
     header->describing = FALSE;
-    if (!header->destroyed && !header->activating) {
-        disable_actions(header);
+    if (header_call_live(&call) && !header->activating) {
+        GVariant *states = NULL;
         if (reply) {
-            GVariant *states = g_variant_get_child_value(reply, 0);
-            for (guint i = 0; i < G_N_ELEMENTS(commands); i++) {
-                gboolean enabled = FALSE;
-                g_variant_lookup(states, commands[i], "b", &enabled);
-                gtk_widget_set_sensitive(header->buttons[i], enabled);
-            }
-            g_variant_unref(states);
+            states = g_variant_get_child_value(reply, 0);
         }
+        apply_description(header, states);
+        g_clear_pointer(&states, g_variant_unref);
     }
     g_clear_pointer(&reply, g_variant_unref);
     g_clear_error(&error);
@@ -407,47 +525,66 @@ static void activated(GObject *source, GAsyncResult *result, gpointer data) {
 
 static void clicked(GtkButton *button, gpointer data) {
     Header *header = data;
-    if (header->destroyed || header->activating || !header->bus)
+    g_auto(HeaderCall) call = header_call(header);
+    if (!header_call_live(&call) || header->activating || !header->bus)
         return;
     const char *command = g_object_get_data(G_OBJECT(button), "norvi-command");
-    Request *request = request_new(header);
+    if (!command)
+        return;
     header->activating = TRUE;
     disable_actions(header);
+    if (!header_call_live(&call))
+        return;
+    guint64 handle = window_handle(header);
+    if (!handle) {
+        header->activating = FALSE;
+        return;
+    }
+    Request *request = request_new(header);
     g_dbus_connection_call(header->bus, broker_name, "/dev/norvi/OfficeHeader",
         "dev.norvi.OfficeHeader", "Activate",
-        g_variant_new("(utsss)", (guint)getpid(), window_handle(header), header->identity, command, token),
+        g_variant_new("(utsss)", (guint)getpid(), handle, header->identity, command, token),
         G_VARIANT_TYPE("(b)"), G_DBUS_CALL_FLAGS_NO_AUTO_START, 30000,
         header->cancel, activated, request);
 }
 
 static GtkWidget *document_focus(GtkWidget *widget) {
+    if (!widget)
+        return NULL;
     if (GTK_IS_FIXED(widget))
-        return widget;
+        return g_object_ref(widget);
     if (!GTK_IS_CONTAINER(widget))
         return NULL;
     GList *children = gtk_container_get_children(GTK_CONTAINER(widget));
+    for (GList *node = children; node; node = node->next)
+        g_object_ref(node->data);
     GtkWidget *found = NULL;
     for (GList *node = children; node && !found; node = node->next)
         found = document_focus(node->data);
-    g_list_free(children);
+    g_list_free_full(children, g_object_unref);
     return found;
 }
 
 static gboolean header_key(GtkWidget *window, GdkEventKey *event, gpointer data) {
     Header *header = data;
+    g_auto(HeaderCall) call = header_call(header);
+    if (!header_call_live(&call) || !call.menu || !call.bar)
+        return FALSE;
     guint modifiers = event->state & gtk_accelerator_get_default_mod_mask();
-    if (event->keyval == GDK_KEY_F10 && modifiers == 0 && gtk_widget_get_sensitive(header->menu)) {
-        gtk_widget_grab_focus(header->menu);
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(header->menu), TRUE);
+    if (event->keyval == GDK_KEY_F10 && modifiers == 0 && gtk_widget_get_sensitive(call.menu)) {
+        gtk_widget_grab_focus(call.menu);
+        if (header_call_live(&call))
+            gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(call.menu), TRUE);
         return TRUE;
     }
     GtkWidget *focus = gtk_window_get_focus(GTK_WINDOW(window));
-    if (focus && gtk_widget_is_ancestor(focus, header->bar) && modifiers == 0 &&
+    if (focus && gtk_widget_is_ancestor(focus, call.bar) && modifiers == 0 &&
             (event->keyval == GDK_KEY_Escape || event->keyval == GDK_KEY_F6)) {
-        GtkWidget *client = document_focus(gtk_bin_get_child(GTK_BIN(window)));
-        if (client) {
+        g_autoptr(GtkWidget) client = document_focus(gtk_bin_get_child(GTK_BIN(window)));
+        if (client && header_call_live(&call)) {
             gtk_widget_set_can_focus(client, TRUE);
-            gtk_widget_grab_focus(client);
+            if (header_call_live(&call))
+                gtk_widget_grab_focus(client);
             return TRUE;
         }
     }
@@ -474,99 +611,134 @@ static gboolean blurred_menu(void) {
     return blur && dark && !contrast;
 }
 
-static void style_menu(GtkWidget *menu) {
-    GtkStyleContext *style = gtk_widget_get_style_context(menu);
+static void style_menu(HeaderCall *call, GtkWidget *menu) {
+    g_autoptr(GtkWidget) keep = g_object_ref(menu);
+    if (!header_call_live(call))
+        return;
+    g_autoptr(GtkStyleContext) style = g_object_ref(gtk_widget_get_style_context(menu));
     gtk_style_context_add_class(style, "norvi-header-menu");
+    if (!header_call_live(call))
+        return;
     if (blurred_menu())
         gtk_style_context_add_class(style, "norvi-blurred-menu");
     else
         gtk_style_context_remove_class(style, "norvi-blurred-menu");
-    GtkWidget *top = gtk_widget_get_toplevel(menu);
+    if (!header_call_live(call))
+        return;
+    g_autoptr(GtkWidget) top = g_object_ref(gtk_widget_get_toplevel(menu));
     if (GTK_IS_WINDOW(top))
         gtk_style_context_add_class(gtk_widget_get_style_context(top), "norvi-header-popup");
+    if (!header_call_live(call))
+        return;
     GList *children = gtk_container_get_children(GTK_CONTAINER(menu));
-    for (GList *node = children; node; node = node->next) {
+    for (GList *node = children; node; node = node->next)
+        g_object_ref(node->data);
+    for (GList *node = children; header_call_live(call) && node; node = node->next) {
         if (GTK_IS_MENU_ITEM(node->data)) {
             GtkWidget *sub = gtk_menu_item_get_submenu(GTK_MENU_ITEM(node->data));
             if (sub)
-                style_menu(sub);
+                style_menu(call, sub);
         }
     }
-    g_list_free(children);
+    g_list_free_full(children, g_object_unref);
 }
 
 static void append_menus(GMenuModel *source, GMenu *target, GHashTable *seen,
-        GString *signature, guint depth) {
-    if (depth > 4)
+        GString *signature, guint depth, HeaderCall *call) {
+    if (depth > 4 || (call && !header_call_live(call)))
         return;
-    for (gint i = 0; i < g_menu_model_get_n_items(source); i++) {
-        GMenuModel *section = g_menu_model_get_item_link(source, i, G_MENU_LINK_SECTION);
+    gint count = g_menu_model_get_n_items(source);
+    for (gint i = 0; i < count && (!call || header_call_live(call)); i++) {
+        g_autoptr(GMenuModel) section = g_menu_model_get_item_link(source, i, G_MENU_LINK_SECTION);
+        if (call && !header_call_live(call))
+            return;
         if (section) {
-            append_menus(section, target, seen, signature, depth + 1);
-            g_object_unref(section);
+            append_menus(section, target, seen, signature, depth + 1, call);
             continue;
         }
-        gchar *action = NULL, *label = NULL;
+        g_autofree gchar *action = NULL, *label = NULL;
         g_menu_model_get_item_attribute(source, i, "submenu-action", "s", &action);
+        if (call && !header_call_live(call))
+            return;
         if (!action)
             g_menu_model_get_item_attribute(source, i, G_MENU_ATTRIBUTE_ACTION, "s", &action);
+        if (call && !header_call_live(call))
+            return;
         g_menu_model_get_item_attribute(source, i, G_MENU_ATTRIBUTE_LABEL, "s", &label);
+        if (call && !header_call_live(call))
+            return;
         if (action && !g_hash_table_contains(seen, action)) {
             g_hash_table_add(seen, g_strdup(action));
             GMenuItem *item = g_menu_item_new_from_model(source, i);
+            if (call && !header_call_live(call)) {
+                g_object_unref(item);
+                return;
+            }
             g_menu_append_item(target, item);
             g_object_unref(item);
             g_string_append_printf(signature, "%s:%s;", action, label ? label : "");
         }
-        g_free(action);
-        g_free(label);
     }
 }
 
 static gboolean refresh(gpointer data) {
     Header *header = data;
-    if (header->destroyed)
+    g_auto(HeaderCall) call = header_call(header);
+    if (!header_call_live(&call))
         return G_SOURCE_REMOVE;
-    if (!gtk_widget_get_realized(header->window))
+    if (!gtk_widget_get_realized(call.window))
         return G_SOURCE_CONTINUE;
     report_native_geometry(header, NULL);
-    GdkWindow *surface = gtk_widget_get_window(header->window);
-    /* Read the pinned GTK backend's exported menu, never its private structs. */
-    GMenuModel *model = g_object_get_data(G_OBJECT(surface), "g-lo-menubar");
-    GActionGroup *actions = g_object_get_data(G_OBJECT(surface), "g-lo-action-group");
-    if (G_IS_MENU_MODEL(model) && G_IS_ACTION_GROUP(actions) &&
-            g_menu_model_get_n_items(model) > 0) {
-        GMenu *flat = g_menu_new();
-        GHashTable *seen = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
+    if (!header_call_live(&call))
+        return G_SOURCE_REMOVE;
+    GdkWindow *borrowed = gtk_widget_get_window(call.window);
+    if (!borrowed || !call.menu)
+        return G_SOURCE_CONTINUE;
+    g_autoptr(GdkWindow) surface = g_object_ref(borrowed);
+    /* Exported models are borrowed and their virtual methods can close the
+     * frame. Retain both before calling providers, then recheck liveness. */
+    GMenuModel *borrowed_model = g_object_get_data(G_OBJECT(surface), "g-lo-menubar");
+    GActionGroup *borrowed_actions = g_object_get_data(G_OBJECT(surface), "g-lo-action-group");
+    g_autoptr(GMenuModel) model = G_IS_MENU_MODEL(borrowed_model) ? g_object_ref(borrowed_model) : NULL;
+    g_autoptr(GActionGroup) actions = G_IS_ACTION_GROUP(borrowed_actions) ? g_object_ref(borrowed_actions) : NULL;
+    if (model && actions && g_menu_model_get_n_items(model) > 0 && header_call_live(&call)) {
+        g_autoptr(GMenu) flat = g_menu_new();
+        g_autoptr(GHashTable) seen = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
         GString *signature = g_string_new(NULL);
-        append_menus(model, flat, seen, signature, 0);
-        if (g_menu_model_get_n_items(G_MENU_MODEL(flat)) &&
+        append_menus(model, flat, seen, signature, 0, &call);
+        if (header_call_live(&call) && g_menu_model_get_n_items(G_MENU_MODEL(flat)) &&
                 g_strcmp0(signature->str, header->menu_signature) != 0 &&
-                !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(header->menu))) {
+                !gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(call.menu))) {
             g_free(header->menu_signature);
             header->menu_signature = g_strdup(signature->str);
             g_set_object(&header->model, model);
             g_set_object(&header->actions, actions);
-            gtk_widget_insert_action_group(header->menu, "win", actions);
-            gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(header->menu), G_MENU_MODEL(flat));
-            gtk_widget_set_sensitive(header->menu, TRUE);
+            if (header_call_live(&call))
+                gtk_widget_insert_action_group(call.menu, "win", actions);
+            if (header_call_live(&call))
+                gtk_menu_button_set_menu_model(GTK_MENU_BUTTON(call.menu), G_MENU_MODEL(flat));
+            if (header_call_live(&call))
+                gtk_widget_set_sensitive(call.menu, TRUE);
         }
         g_string_free(signature, TRUE);
-        g_hash_table_unref(seen);
-        g_object_unref(flat);
     }
-    GtkWidget *popup = GTK_WIDGET(gtk_menu_button_get_popup(GTK_MENU_BUTTON(header->menu)));
+    if (!header_call_live(&call))
+        return G_SOURCE_REMOVE;
+    GtkWidget *popup = GTK_WIDGET(gtk_menu_button_get_popup(GTK_MENU_BUTTON(call.menu)));
     if (popup)
-        style_menu(popup);
+        style_menu(&call, popup);
+    if (!header_call_live(&call))
+        return G_SOURCE_REMOVE;
     if (!header->bus || header->describing || header->activating)
         return G_SOURCE_CONTINUE;
-    if (!window_handle(header))
+    guint64 handle = window_handle(header);
+    if (!handle)
         return G_SOURCE_CONTINUE;
     header->describing = TRUE;
     Request *request = request_new(header);
     g_dbus_connection_call(header->bus, broker_name, "/dev/norvi/OfficeHeader",
         "dev.norvi.OfficeHeader", "Describe",
-        g_variant_new("(utss)", (guint)getpid(), window_handle(header), header->identity, token),
+        g_variant_new("(utss)", (guint)getpid(), handle, header->identity, token),
         G_VARIANT_TYPE("(a{sb})"),
         G_DBUS_CALL_FLAGS_NO_AUTO_START, 1000, header->cancel, described, request);
     return G_SOURCE_CONTINUE;
@@ -615,13 +787,13 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
     header->complete_frame = -1;
     header->bus = g_bus_get_sync(G_BUS_TYPE_SESSION, NULL, NULL);
     g_object_set_data_full(G_OBJECT(window), "norvi-header", header, header_unref);
-    g_signal_connect(window, "destroy", G_CALLBACK(destroyed), header);
+    connect_header(window, "destroy", G_CALLBACK(destroyed), header, 0);
     if (client_glass) {
         GdkVisual *visual = gdk_screen_get_rgba_visual(gtk_widget_get_screen(window));
         if (visual) {
             gtk_widget_set_visual(window, visual);
-            g_signal_connect(window, "realize", G_CALLBACK(glass_realized), header);
-            g_signal_connect(window, "unrealize", G_CALLBACK(glass_unrealized), header);
+            connect_header(window, "realize", G_CALLBACK(glass_realized), header, 0);
+            connect_header(window, "unrealize", G_CALLBACK(glass_unrealized), header, 0);
             g_signal_connect_object(interface_settings, "changed", G_CALLBACK(glass_appearance_changed), window, 0);
             g_signal_connect_object(contrast_settings, "changed", G_CALLBACK(glass_appearance_changed), window, 0);
         }
@@ -661,7 +833,7 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
         atk_object_set_name(gtk_widget_get_accessible(button), labels[i]);
         gtk_style_context_add_class(gtk_widget_get_style_context(button), "flat");
         g_object_set_data(G_OBJECT(button), "norvi-command", (gpointer)commands[i]);
-        g_signal_connect(button, "clicked", G_CALLBACK(clicked), header);
+        connect_header(button, "clicked", G_CALLBACK(clicked), header, 0);
         if (i == 4)
             gtk_header_bar_pack_end(GTK_HEADER_BAR(header->bar), button);
         else
@@ -677,10 +849,10 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
     atk_object_set_name(gtk_widget_get_accessible(header->menu), "Main menu");
     gtk_widget_set_sensitive(header->menu, FALSE);
     gtk_header_bar_pack_end(GTK_HEADER_BAR(header->bar), header->menu);
-    g_signal_connect(window, "key-press-event", G_CALLBACK(header_key), header);
+    connect_header(window, "key-press-event", G_CALLBACK(header_key), header, 0);
     gtk_widget_show_all(header->bar);
-    header->timer = g_timeout_add(350, refresh, header);
-    g_signal_connect_after(window, "draw", G_CALLBACK(chrome_draw), header);
+    header->timer = g_timeout_add_full(G_PRIORITY_DEFAULT, 350, refresh, header_ref(header), header_unref);
+    connect_header(window, "draw", G_CALLBACK(chrome_draw), header, G_CONNECT_AFTER);
     return TRUE;
 }
 
@@ -690,7 +862,8 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
 static void prepare_chrome(GDBusConnection *bus, gint y) {
     if (!bus)
         return;
-    GVariant *reply = g_dbus_connection_call_sync(bus, "org.gnome.Shell",
+    g_autoptr(GDBusConnection) keep = g_object_ref(bus);
+    GVariant *reply = g_dbus_connection_call_sync(keep, "org.gnome.Shell",
         "/dev/norvi/OfficeGeometry", "dev.norvi.OfficeGeometry", "PrepareChrome",
         g_variant_new("(i)", y), G_VARIANT_TYPE("()"), G_DBUS_CALL_FLAGS_NO_AUTO_START,
         120, NULL, NULL);
@@ -709,7 +882,10 @@ static gboolean chrome_input(GSignalInvocationHint *hint, guint count,
     GtkWidget *widget = g_value_get_object(values);
     GtkWidget *window = gtk_widget_get_toplevel(widget);
     Header *header = g_object_get_data(G_OBJECT(window), "norvi-header");
-    if (!header || header->destroyed)
+    if (!header)
+        return TRUE;
+    g_auto(HeaderCall) call = header_call(header);
+    if (!header_call_live(&call))
         return TRUE;
     GdkWindow *surface = gdk_event_get_window(event);
     GdkWindow *top = gtk_widget_get_window(window);
@@ -732,14 +908,19 @@ static gboolean menu_activation(GSignalInvocationHint *hint, guint count,
     (void)values;
     (void)data;
     GList *windows = gtk_window_list_toplevels();
+    for (GList *item = windows; item; item = item->next)
+        g_object_ref(item->data);
     for (GList *item = windows; item; item = item->next) {
         Header *header = g_object_get_data(G_OBJECT(item->data), "norvi-header");
-        if (header && !header->destroyed && gtk_widget_get_mapped(header->window)) {
+        if (!header)
+            continue;
+        g_auto(HeaderCall) call = header_call(header);
+        if (header_call_live(&call) && gtk_widget_get_mapped(call.window)) {
             prepare_chrome(header->bus, -1);
             break;
         }
     }
-    g_list_free(windows);
+    g_list_free_full(windows, g_object_unref);
     return TRUE;
 }
 

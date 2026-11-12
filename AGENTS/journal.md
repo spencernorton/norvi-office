@@ -1,5 +1,22 @@
 # Journal
 
+## 2026-11-12 — Guard native callbacks against reentrant document closure
+
+- ATK geometry providers, menu models and GTK notifications can close their
+  owning document during a header callback. Keep callback-scoped references to
+  the header, window, controls and models, then check logical liveness after
+  provider calls. Stop reporting, refreshing, styling and updating controls
+  as soon as destruction invalidates that snapshot.
+- Timer sources and signal closures now own their header data. Destruction
+  clears pointers and source IDs before cancellation/removal; geometry reports
+  copy titles before bus calls. Opaque launches write geometry receipts only
+  initially or when values change, avoiding unchanged periodic disk writes.
+- Added mandatory-hit GTK regressions for destruction during ATK reporting,
+  actual timer refresh, menu installation, asynchronous description updates and
+  focus handoff. The build runs them on Xvfb with fatal criticals. Source/Python
+  checks pass locally; Linux compilation and those native regressions still
+  require execution on the qualified toolchain before installed acceptance.
+
 ## 2026-11-11 — Refresh owned presentation packages in closed profiles
 
 - Existing ready profiles now compare a reproducible revision of the owned
