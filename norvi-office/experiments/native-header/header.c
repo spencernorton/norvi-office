@@ -96,8 +96,13 @@ typedef struct {
 
 static HeaderCall header_call(Header *header) {
     HeaderCall call = {.header = header_ref(header)};
-    if (header->window)
-        call.window = g_object_ref(header->window);
+    if (header->destroyed || !header->window)
+        return call;
+    call.window = g_object_ref(header->window);
+    /* An earlier destroy handler can already have torn down child controls.
+     * Keep the window/data alive without touching those borrowed descendants. */
+    if (gtk_widget_in_destruction(call.window))
+        return call;
     if (header->bar)
         call.bar = g_object_ref(header->bar);
     if (header->menu)

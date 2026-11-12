@@ -1,5 +1,12 @@
 # Journal
 
+## 2026-11-12 — Avoid descendant snapshots during active destruction
+
+- A callback entered from an earlier destroy handler now retains only the
+  header and window. It does not reference borrowed descendants that the
+  earlier handler could already have destroyed. Logical liveness still stops
+  the callback before further provider or widget operations.
+
 ## 2026-11-12 — Use GObject cleanup for retained action interfaces
 
 - Exact Linux compilation exposed that GActionGroup has no automatic cleanup
