@@ -700,7 +700,9 @@ static gboolean refresh(gpointer data) {
     GMenuModel *borrowed_model = g_object_get_data(G_OBJECT(surface), "g-lo-menubar");
     GActionGroup *borrowed_actions = g_object_get_data(G_OBJECT(surface), "g-lo-action-group");
     g_autoptr(GMenuModel) model = G_IS_MENU_MODEL(borrowed_model) ? g_object_ref(borrowed_model) : NULL;
-    g_autoptr(GActionGroup) actions = G_IS_ACTION_GROUP(borrowed_actions) ? g_object_ref(borrowed_actions) : NULL;
+    g_autoptr(GObject) actions_owner = G_IS_ACTION_GROUP(borrowed_actions) ?
+        G_OBJECT(g_object_ref(borrowed_actions)) : NULL;
+    GActionGroup *actions = actions_owner ? G_ACTION_GROUP(actions_owner) : NULL;
     if (model && actions && g_menu_model_get_n_items(model) > 0 && header_call_live(&call)) {
         g_autoptr(GMenu) flat = g_menu_new();
         g_autoptr(GHashTable) seen = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);

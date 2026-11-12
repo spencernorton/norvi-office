@@ -1,5 +1,11 @@
 # Journal
 
+## 2026-11-12 — Use GObject cleanup for retained action interfaces
+
+- Exact Linux compilation exposed that GActionGroup has no automatic cleanup
+  typedef on the qualified GLib. Retain it through a GObject owner and a typed
+  interface alias. Native regression execution remains pending that rebuild.
+
 ## 2026-11-12 — Clear timer identity during nested teardown
 
 - A destroy handler registered earlier can pump the main context before the
