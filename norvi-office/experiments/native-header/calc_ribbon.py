@@ -329,6 +329,9 @@ def build_find_menu(tree, items=(*FIND, ("SelectRow", ".uno:SelectRow"), ("Selec
     dropdown.find("packing/property[@name='position']").text = "1"
     tools.find("packing/property[@name='position']").text = "0"
     toolbar = tools.find("object")
+    # The small buttons start at the group's left edge in every application, as in the study.
+    for prop in [item for item in toolbar.findall("property") if item.get("name") in ("halign", "hexpand")]:
+        toolbar.remove(prop)
     if first:
         old_find = toolbar.find("child/object[@id='Home-SearchDialog']/property[@name='action_name']")
         old_find.text = first

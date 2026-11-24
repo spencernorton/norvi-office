@@ -21,7 +21,8 @@
   again, and no longer carries an empty indent group.
 - The rules between groups are one height in every Home tab, Calc's first group
   is as wide as the other applications', and Calc's Formulas tab is centred in
-  the card.
+  the card. The small buttons above Find & Select start at the group's left
+  edge in Writer, Impress and Draw, as they do in Calc.
 - Draw's fill colour sits in a field like the fill type beside it.
 - A Base window no longer freezes the suite. The header asked Base which of its
   buttons apply three times a second from a second thread, which Base's

@@ -1,5 +1,23 @@
 # Journal
 
+## 2026-11-24 — Find group: the small buttons start at the left edge everywhere
+
+- The official Writer, Impress and Draw layouts right-align the small button
+  row above Find & Select; Calc's does not. `build_find_menu` now drops that
+  alignment, so the row starts at the group's left edge in all four. Calc's
+  generated layouts are byte-identical to before; the three module layouts get
+  new hashes and the launcher replaces the ones it wrote on the next start.
+- Checked in the lab at 1440 px: only the button row moved (a 130 x 16 px box
+  in each of the three), and each Home tab is unchanged after the window is
+  narrowed and widened again.
+- Trap for the next check: a lab run that opens Writer first on a new profile
+  shows Writer without its sidebar rail, because the launcher hides the sidebar
+  once, in whichever application opens first. Compare captures only between
+  runs that open the applications in the same order.
+- Known gap: that one-time default means the sidebar rail is hidden in the
+  application opened first on a new profile and stays in the others. Whether
+  every application should start without it is a design choice left open.
+
 ## 2026-11-24 — Base froze the suite: command state is asked on the main thread
 
 - Found on the real desktop while checking 1.2.0: a Base window stopped
