@@ -24,21 +24,25 @@ headless initialization and disposable qualification processes.
 
 | Application | Interface coverage in source | Current candidate on the real desktop |
 | --- | --- | --- |
-| Calc | Custom grouped ribbon; audited Home/Insert/Formulas artwork; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
-| Writer | Grouped Home tab; audited Home/Insert artwork; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
-| Impress | Grouped Home tab; audited Home/Insert artwork; suite stylesheet | 1.1.0 inside a running suite; capture checked; not yet accepted |
-| Draw | Grouped Home tab; shared native header; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
-| Base | Shared native header; upstream module controls/artwork; suite stylesheet | 1.1.0 inside a running suite; capture checked; not yet accepted |
-| Math | Shared native header; upstream module controls/artwork; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
-| Office start center | Direct suite launcher and desktop entry; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
+| Calc | Custom grouped ribbon; audited Home/Insert/Formulas artwork; suite stylesheet | 1.2.0 from its menu entry; capture checked; not yet accepted |
+| Writer | Grouped Home tab; audited Home/Insert artwork; suite stylesheet | 1.2.0 from its menu entry; capture checked; not yet accepted |
+| Impress | Grouped Home tab; audited Home/Insert artwork; suite stylesheet | 1.2.0 inside a running suite; capture checked; not yet accepted |
+| Draw | Grouped Home tab; shared native header; suite stylesheet | 1.2.0 from its menu entry; capture checked; not yet accepted |
+| Base | Shared native header; upstream module controls/artwork; suite stylesheet | 1.2.0 inside a running suite, held open for a minute; capture checked; not yet accepted |
+| Math | Shared native header; upstream module controls/artwork; suite stylesheet | 1.2.0 from its menu entry; capture checked; not yet accepted |
+| Office start center | Direct suite launcher and desktop entry; suite stylesheet | 1.2.0 from its menu entry; capture checked; not yet accepted |
 
-The last column records one check of the 1.1.0 candidate on 2026-11-23. Each
-module was opened on the real desktop at 3840 x 2160, its window was captured
-and compared with the lab capture, and it was closed again. Impress and Base
-were opened with fictional documents inside a suite started from another menu
-entry, because their own entries first ask for a template or start a wizard.
-Menus, dialogs, prompts and editing were checked in the lab only. Acceptance by
-the owner is still open.
+The last column records one check of the 1.2.0 candidate on 2026-11-24. Each
+module was opened on the real desktop at 3840 x 2160 and scale 2, its window
+was captured and compared with the lab capture, and it was closed again.
+Impress and Base were opened with fictional documents inside a suite started
+from another menu entry, because their own entries first ask for a template or
+start a wizard. The first pass froze in Base; that defect is fixed (see the
+changelog), the package was rebuilt, and Calc and Base were checked again, with
+Base left open for a minute. Writer, Impress, Draw, Math and the start center
+were captured with the build before that fix, which differs only in the command
+broker and the launcher. Menus, dialogs, prompts and editing were checked in
+the lab only. Acceptance by the owner is still open.
 
 The [artwork receipt](command-artwork.md) records exact source command coverage.
 Unmatched command icons still come from the official Sifr theme. All-tabs icon

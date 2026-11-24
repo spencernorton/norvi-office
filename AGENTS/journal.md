@@ -35,6 +35,12 @@
 - A hung Office started by a check script is closed by killing its process
   group, then its broker; `RecoveryInfo` held no session data afterwards. Do not
   run a real-desktop check under `timeout` without a cleanup path.
+- Known gap: the broker keeps running after the last window closes, until the
+  next launch replaces it. It holds no window and a dead bridge. It also logs
+  one failed description when Office closes under a poll; that line is not a
+  fault during use (no such line in a minute of Base on the real desktop).
+- Rebuilt from `479837e`, reinstalled and checked on the real desktop:
+  Calc from its menu entry, then Base for a minute, both closed cleanly.
 
 ## 2026-11-23 — Grouped Home tabs beyond Calc, and a header that follows the scale
 
