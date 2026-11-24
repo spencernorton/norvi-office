@@ -166,11 +166,12 @@ def module_ribbons(profile, record):
     written = dict(record.get("ribbons", {}))
     for module in calc_ribbon.MODULES:
         target = profile / calc_ribbon.RIBBON.replace("scalc", module)
-        ours = written.pop(module, None)
-        if target.is_symlink() or (target.exists() and (
-                not target.is_file() or sha256(target.read_bytes()).hexdigest() != ours)):
-            continue
         contents = calc_ribbon.module_ribbon(module)
+        # A file equal to this runtime's layout is ours even when an interrupted run never recorded it.
+        ours = {written.pop(module, None), contents and sha256(contents).hexdigest()}
+        if target.is_symlink() or (target.exists() and (
+                not target.is_file() or sha256(target.read_bytes()).hexdigest() not in ours)):
+            continue
         if contents is None:
             # An engine update changed the official layout: its own ribbon returns.
             target.unlink(missing_ok=True)

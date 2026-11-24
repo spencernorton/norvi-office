@@ -268,7 +268,7 @@ def pack(parent, node):
     ET.SubElement(parent, "child").append(node)
 
 
-def add_formulas_tab(tree):
+def add_formulas_tab(tree, centred=False):
     tabs = tree.find(".//object[@id='ContextContainer']")
     for child in list(tabs):
         node = child.find("object")
@@ -282,7 +282,8 @@ def add_formulas_tab(tree):
         ("Calculation", ("Calculate", "CalculateHard")),
     ):
         toolbar = widget("sfxlo-NotebookbarToolBox", "NorviFormula" + name,
-                         toolbar_style="both", show_arrow="False", icon_size="3", can_focus="True")
+                         toolbar_style="both", show_arrow="False", icon_size="3", can_focus="True",
+                         **({"valign": "center", "vexpand": "True"} if centred else {}))
         for command in commands:
             pack(toolbar, widget("GtkToolButton", "NorviFormula" + command,
                                  action_name=".uno:" + command))
@@ -367,8 +368,9 @@ def add_rules(nodes, names, make):
 
 
 def styled_rule(identifier):
-    return widget("GtkSeparator", identifier, orientation="vertical",
-                  margin_start="24", margin_end="12", margin_top="3", margin_bottom="3")
+    # One height for every rule, whatever the group beside it holds; with pad_home it fills the card.
+    return widget("GtkSeparator", identifier, orientation="vertical", height_request="76",
+                  margin_start="24", margin_end="12")
 
 
 def remove_nodes(tree, scope, items):
@@ -390,7 +392,7 @@ def pad_home(home):
     # Every tab takes the tallest page's height, so this pads them all.
     for key in ("margin_top", "margin_bottom"):
         margin = ET.Element("property", name=key)
-        margin.text = "8"
+        margin.text = "5"
         home.insert(0, margin)
 
 
@@ -426,7 +428,7 @@ def build_home(tree, dark=False, styled=False):
         set_property(identifier, "visible", "False")
     for identifier in ("Home-Section-Clipboard", "Home-Section-Find1"):
         set_property(identifier, "margin_start", "18" if styled and identifier.endswith("Clipboard") else "10")
-    set_property("Home-Section-Format", "margin_start", "8")
+    set_property("Home-Section-Format", "margin_start", "0" if styled else "8")
     set_property("Home-RowOperations", "label", "Rows")
     set_property("Home-ColumnOperations", "label", "Columns")
     set_property("Home-ConditionalFormatMenu", "label", "Conditional Formatting")
@@ -477,7 +479,7 @@ def ribbon(environment, native=False):
     tree = ET.ElementTree(ET.fromstring(source, parser=ET.XMLParser(
         target=ET.TreeBuilder(insert_comments=True))))
     build_home(tree, "dark" in environment.get("GTK_THEME", ""), styled=native)
-    add_formulas_tab(tree)
+    add_formulas_tab(tree, native)
     extension_label = tree.find(".//object[@id='ExtensionLabel']/property[@name='label']")
     extension_label.attrib = {"name": "label"}
     extension_label.text = "E~xtensions"

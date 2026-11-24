@@ -70,8 +70,9 @@ The unmodified engine fixes some details, so the study cannot be matched there:
 - only the Home tab of Writer, Impress and Draw is regrouped; their other tabs
   keep LibreOffice's own layouts, which collapse behind a chevron when a tab
   does not fit the window;
-- drop-down lists of ribbon fields, the Borders palette and Impress's layout
-  thumbnails are drawn by the engine with square corners and stock artwork;
+- drop-down lists of ribbon fields, the Borders palette, Impress's layout
+  thumbnails and Draw's line style preview are drawn by the engine with square
+  corners and stock artwork;
 - Base draws its section titles black on a dark desktop, so their band stays
   light enough to read them.
 - Calc's cell properties deck first opens narrower than its content, with or

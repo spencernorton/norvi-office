@@ -24,6 +24,15 @@
   with. Glass stays off at any scale but 1, as before.
 - The launcher always runs the suite on the dark variant, so a light desktop
   changes only what the desktop itself draws around the window.
+- A rule's height follows its group, so groups of different content drew rules
+  of different heights. The engine honours `height_request` on a separator;
+  76 px with a 5 px page margin gives one height and the same card as before.
+- A ribbon control built from native widgets sits on a plate the engine paints
+  in the window colour. A field covers it; Draw's fill colour did not, so it now
+  has a field of its own. The stylesheet cannot remove the plate itself.
+- A profile's module ribbon counts as the launcher's when it equals the recorded
+  hash or the layout this runtime would write, so a run interrupted before its
+  record was saved does not turn its own file into "the user's".
 - Only Home is regrouped. The other tabs keep the official layouts.
 
 ## 2026-11-23 — Carry the Calc study across the suite

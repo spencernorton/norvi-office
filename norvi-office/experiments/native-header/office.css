@@ -297,8 +297,20 @@ toolbar separator, separator {
 }
 
 /* Writer's style gallery: room for a style name on two lines. */
-box > box:only-child > scrolledwindow.frame:only-child { min-height: 70px; }
+box > box:only-child > scrolledwindow.frame:only-child {
+  min-height: 70px;
+  border: 1px solid @field_edge;
+  border-radius: 6px;
+}
 box > box:only-child > scrolledwindow.frame:only-child > iconview { font-size: 11px; }
+box > box:only-child > scrolledwindow.frame:only-child > iconview.cell:selected { border-radius: 5px; }
+
+/* Draw's fill colour sits in a field like the fill type beside it. */
+#combobox + box.vertical > toolbar.small-button {
+  border: 1px solid @field_edge;
+  border-radius: 5px;
+  background-color: @field;
+}
 
 /* Fields. LibreOffice builds its own combo boxes: a box named "combobox". */
 entry,

@@ -156,6 +156,9 @@ class PresentationRefreshTests(unittest.TestCase):
             self.assertEqual(paths["swriter"].read_bytes(), b"next")
             self.assertEqual(paths["simpress"].read_text(), "edited later")
             self.assertEqual(set(record["ribbons"]), {"swriter"})
+            # A run interrupted before its record was saved still owns what it wrote.
+            with patch.object(launch.calc_ribbon, "module_ribbon", return_value=b"next"):
+                self.assertEqual(set(launch.module_ribbons(profile, {})["ribbons"]), {"swriter"})
             # An unknown official layout gets its own ribbon back.
             with patch.object(launch.calc_ribbon, "module_ribbon", return_value=None):
                 record = launch.module_ribbons(profile, record)
@@ -177,6 +180,8 @@ class PresentationRefreshTests(unittest.TestCase):
                                  ["Home-Section-" + name for name in spec["sections"]])
                 identifiers = {item.get("id") for item in page.iter("object")}
                 self.assertFalse(identifiers.intersection(spec["drop"]))
+                for identifier, _source, destination in spec["move"]:
+                    self.assertIsNotNone(page.find(f".//object[@id='{destination}']//object[@id='{identifier}']"))
                 self.assertEqual({item.get("id") for item in home.iter("object") if item.get("class") == "GtkSeparator"},
                                  {"NorviRule" + name for name in spec["rules"]})
                 self.assertIn("Home-HomeButton:Norvi Find and Select", identifiers)

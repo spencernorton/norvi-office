@@ -10,8 +10,8 @@
   spacing, text direction, vertical text, and the slide show buttons (the small
   button above Find & Select still starts the show).
 - Each layout is built from the pinned official one. A profile that has its own
-  ribbon for a module keeps it, and an engine update that changes the official
-  layout brings LibreOffice's own ribbon back for that module.
+  ribbon for a module keeps it, and a module whose official layout is not the
+  pinned one keeps LibreOffice's own ribbon.
 - Writer's style gallery shows a style name on two lines in full.
 - A command that only reports a state no longer shows an empty check box in
   menus, and side panel title bars keep their height.
@@ -19,6 +19,11 @@
   so they stay sharp at scale 2.
 - Calc's Home tab keeps only its own rules after a narrow window is widened
   again, and no longer carries an empty indent group.
+- The rules between groups are one height in every Home tab, Calc's first group
+  is as wide as the other applications', and Calc's Formulas tab is centred in
+  the card.
+- Draw's fill colour sits in a field like the fill type beside it, and Writer's
+  style gallery has a hairline edge and a rounded selection.
 
 ## 1.1.0 — One look across the suite
 
