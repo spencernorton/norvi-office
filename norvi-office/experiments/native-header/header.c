@@ -43,16 +43,20 @@ static const char *study_paths[] = {
     "M4 7h16M4 12h16M4 17h16",
 };
 
-static GtkWidget *study_icon(guint index) {
+/* Drawn at the scale the window opens with, so the lines stay sharp on a dense display. */
+static GtkWidget *study_icon(guint index, gint scale) {
     gchar *svg = g_strdup_printf(
-        "<svg xmlns='http://www.w3.org/2000/svg' width='17' height='17' viewBox='0 0 24 24'>"
+        "<svg xmlns='http://www.w3.org/2000/svg' width='%d' height='%d' viewBox='0 0 24 24'>"
         "<path d='%s' fill='none' stroke='#f2eff8' stroke-width='1.55' "
-        "stroke-linecap='round' stroke-linejoin='round'/></svg>", study_paths[index]);
+        "stroke-linecap='round' stroke-linejoin='round'/></svg>", 17 * scale, 17 * scale, study_paths[index]);
     GdkPixbufLoader *loader = gdk_pixbuf_loader_new();
     gboolean written = gdk_pixbuf_loader_write(loader, (const guchar *)svg, strlen(svg), NULL);
     gboolean closed = gdk_pixbuf_loader_close(loader, NULL);
     GdkPixbuf *pixbuf = written && closed ? gdk_pixbuf_loader_get_pixbuf(loader) : NULL;
-    GtkWidget *image = pixbuf ? gtk_image_new_from_pixbuf(pixbuf) : NULL;
+    cairo_surface_t *surface = pixbuf ? gdk_cairo_surface_create_from_pixbuf(pixbuf, scale, NULL) : NULL;
+    GtkWidget *image = surface ? gtk_image_new_from_surface(surface) : NULL;
+    if (surface)
+        cairo_surface_destroy(surface);
     g_object_unref(loader);
     g_free(svg);
     return image;
@@ -967,9 +971,10 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
     const gchar *theme = g_getenv("GTK_THEME");
     gboolean study = g_strcmp0(g_getenv("NORVI_OFFICE_CALC_RIBBON"), "1") == 0 &&
         theme && strstr(theme, "dark");
+    gint scale = gtk_widget_get_scale_factor(GTK_WIDGET(window));
     for (guint i = 0; i < G_N_ELEMENTS(commands); i++) {
         GtkWidget *button = gtk_button_new_from_icon_name(icons[i], GTK_ICON_SIZE_BUTTON);
-        GtkWidget *image = study && i < G_N_ELEMENTS(study_paths) ? study_icon(i) : NULL;
+        GtkWidget *image = study && i < G_N_ELEMENTS(study_paths) ? study_icon(i, scale) : NULL;
         if (image)
             gtk_button_set_image(GTK_BUTTON(button), image);
         header->buttons[i] = button;
@@ -987,7 +992,7 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
     disable_actions(header);
     header->menu = header_menu_new();
     gtk_menu_button_set_use_popover(GTK_MENU_BUTTON(header->menu), FALSE);
-    GtkWidget *menu_image = study ? study_icon(5) : NULL;
+    GtkWidget *menu_image = study ? study_icon(5, scale) : NULL;
     gtk_button_set_image(GTK_BUTTON(header->menu), menu_image ? menu_image :
         gtk_image_new_from_icon_name("open-menu-symbolic", GTK_ICON_SIZE_BUTTON));
     gtk_style_context_add_class(gtk_widget_get_style_context(header->menu), "flat");

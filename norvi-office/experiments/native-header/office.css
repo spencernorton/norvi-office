@@ -106,7 +106,7 @@ headerbar.norvi-office-header button {
 headerbar.norvi-office-header button:hover { background-color: @hover; }
 headerbar.norvi-office-header button:active,
 headerbar.norvi-office-header button:checked { background-color: @pressed; }
-headerbar.norvi-office-header button:disabled { opacity: 0.5; }
+headerbar.norvi-office-header button:disabled { opacity: 0.26; }
 headerbar.norvi-office-header button.titlebutton {
   min-width: 34px;
   margin: 0 1px;
@@ -116,10 +116,10 @@ headerbar.norvi-office-header button.titlebutton {
 }
 /* Thin window glyphs, the same weight as the header's line icons. */
 headerbar.norvi-office-header button.titlebutton image { opacity: 0; }
-headerbar.norvi-office-header button.titlebutton.minimize { background-image: url("window-minimize.svg"); }
-headerbar.norvi-office-header button.titlebutton.maximize { background-image: url("window-maximize.svg"); }
-window.maximized headerbar.norvi-office-header button.titlebutton.maximize { background-image: url("window-restore.svg"); }
-headerbar.norvi-office-header button.titlebutton.close { background-image: url("window-close.svg"); }
+headerbar.norvi-office-header button.titlebutton.minimize { background-image: -gtk-scaled(url("window-minimize.svg"), url("window-minimize-2x.svg")); }
+headerbar.norvi-office-header button.titlebutton.maximize { background-image: -gtk-scaled(url("window-maximize.svg"), url("window-maximize-2x.svg")); }
+window.maximized headerbar.norvi-office-header button.titlebutton.maximize { background-image: -gtk-scaled(url("window-restore.svg"), url("window-restore-2x.svg")); }
+headerbar.norvi-office-header button.titlebutton.close { background-image: -gtk-scaled(url("window-close.svg"), url("window-close-2x.svg")); }
 headerbar.norvi-office-header button.titlebutton.close:hover { background-color: #c0392f; }
 headerbar.norvi-office-header separator.titlebutton {
   opacity: 1;

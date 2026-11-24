@@ -12,13 +12,14 @@ SOURCE_HASH = "95663027bb4325d46522b19259fe47fc85b837b6f92558f6568942b58d535804"
 SYSTEM_ICONS = Path("/usr/share/libreoffice/share/config/images_sifr_dark_svg.zip")
 SHORTCUTS = "private:resource/toolbar/notebookbarshortcuts"
 RIBBON = "user/config/soffice.cfg/modules/scalc/ui/notebookbar.ui"
-# Calc ribbons written by earlier candidates (2026-11-11 desktop runtime, then
-# the dark and light output of the preceding source revision). A profile's
+# Calc ribbons written by earlier candidates (2026-11-11 desktop runtime, the
+# dark and light output of the next source revision, then 1.1.0). A profile's
 # ribbon is replaced only while it still is one of these or the recorded one.
 RETIRED_RIBBONS = frozenset((
     "10d4ee9a6f3a465f8ad0b5c03435947338528029ff2c8d9fdfdace417d5234c0",
     "0f66d522777264666527258814a9b2e927b57462343e4c2141f26507d7577819",
     "33f77a35dcd7d8b618ff247450921a5bf648dc8fd55b2a3e560b240cd7553491",
+    "429529974c494d7fb45154ac3427b56ae71986b1c21f2b7bc2341b12811b5bb0",
 ))
 REGISTRY = "http://openoffice.org/2001/registry"
 
@@ -370,6 +371,21 @@ def styled_rule(identifier):
                   margin_start="24", margin_end="12", margin_top="3", margin_bottom="3")
 
 
+def remove_nodes(tree, scope, items):
+    owner = {child: parent for parent in scope.iter() for child in parent}
+    for item in items:
+        owner[owner[item]].remove(owner[item])
+    # A size group naming a widget that is gone stops the application.
+    remaining = {item.get("id") for item in tree.iter("object")}
+    for group in tree.iter("widgets"):
+        for item in [item for item in group if item.get("name") not in remaining]:
+            group.remove(item)
+
+
+def stock_rules(home):
+    return [item for item in home.iter("object") if item.get("class") == "GtkSeparator"]
+
+
 def pad_home(home):
     # Every tab takes the tallest page's height, so this pads them all.
     for key in ("margin_top", "margin_bottom"):
@@ -423,11 +439,12 @@ def build_home(tree, dark=False, styled=False):
     # One rule per study group.
     groups = ("Format", "Align", "Number", "Condition", "Cell1")
     if styled:
-        # The desktop stylesheet draws separators, so use real ones and hide
-        # the stock separators inside groups.
-        for item in home.iter("object"):
-            if item.get("class") == "GtkSeparator":
-                set_property(item.get("id"), "visible", "False")
+        # The desktop stylesheet draws separators, so use real ones. The stock
+        # ones are removed, not hidden: a group that reappears after overflow
+        # shows all of its children again.
+        # The indent group has no visible command left and drew a stray rule
+        # in a narrow window.
+        remove_nodes(tree, home, stock_rules(home) + [nodes["Home-Section-Align1"]])
         add_rules(nodes, groups, styled_rule)
         pad_home(home)
     elif dark:
@@ -446,7 +463,7 @@ def build_home(tree, dark=False, styled=False):
              "Condition", "Style2", "Cell", "Cell1")
     for item in children.values():
         home.remove(item)
-    for index, name in enumerate(order):
+    for index, name in enumerate(name for name in order if name in children):
         item = children[name]
         item.find("packing/property[@name='position']").text = str(index)
         home.append(item)
@@ -549,15 +566,12 @@ def build_module_home(tree, spec):
         set_node_property(nodes[identifier], "action_name", url)
     for name, priority in spec.get("priority", ()):
         nodes["Home-Section-" + name].find("style/class").set("name", f"priority-{priority}")
-    # Removed, not hidden: overflow shows a group's children again when the window grows.
-    owner = {child: parent for parent in page.iter() for child in parent}
-    stock_rules = [item for item in home.iter("object") if item.get("class") == "GtkSeparator"]
-    for item in [nodes[identifier] for identifier in spec["drop"]] + stock_rules:
-        owner[owner[item]].remove(owner[item])
     sections = {item.find("object").get("id").removeprefix("Home-Section-"): item
                 for item in home.findall("child")}
-    for item in sections.values():
-        home.remove(item)
+    remove_nodes(tree, page, [nodes[identifier] for identifier in spec["drop"]] + stock_rules(home) + [
+        item.find("object") for name, item in sections.items() if name not in spec["sections"]])
+    for name in spec["sections"]:
+        home.remove(sections[name])
     for index, name in enumerate(spec["sections"]):
         item = sections[name]
         position = item.find("packing/property[@name='position']")
@@ -565,11 +579,6 @@ def build_module_home(tree, spec):
             position = ET.SubElement(ET.SubElement(item, "packing"), "property", name="position")
         position.text = str(index)
         home.append(item)
-    # A size group naming a widget that is gone stops the application.
-    remaining = {item.get("id") for item in tree.iter("object")}
-    for group in tree.iter("widgets"):
-        for item in [item for item in group if item.get("name") not in remaining]:
-            group.remove(item)
     add_rules(nodes, spec["rules"], styled_rule)
     set_node_property(nodes["Home-Section-Clipboard"], "margin_start", "18")
     pad_home(home)

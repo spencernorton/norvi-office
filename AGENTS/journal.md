@@ -1,5 +1,31 @@
 # Journal
 
+## 2026-11-23 — Grouped Home tabs beyond Calc, and a header that follows the scale
+
+- `calc_ribbon.py` now builds the Home tab of Writer, Impress and Draw from the
+  pinned official layouts (`MODULES`: what moves, what leaves, the group order,
+  where the rules go). The launcher writes each one unless the profile has its
+  own file for that module, and removes its own file when the official layout
+  no longer matches the pin, so LibreOffice's ribbon returns.
+- Traps in the engine's ribbon builder, each seen as a crash or a wrong capture:
+  a size group that names a widget which is gone aborts the application, so
+  `remove_nodes` prunes those names after every removal; a hidden widget that is
+  a direct child of a group is shown again after the group collapses and
+  regrows, so unwanted separators and groups are removed, never hidden; a new
+  child needs an explicit packing position to sort before position 0; Writer's
+  file spells property names with hyphens, the others with underscores.
+- The style gallery's height comes from the larger of the engine's request and
+  the stylesheet's `min-height`; 70 px shows a two-line style name and keeps
+  Writer's ribbon card the same height as the others.
+- Header icons are rendered at the window's scale factor as surfaces, and the
+  window buttons pick a second SVG through `-gtk-scaled`. A surface image does
+  not get the dimming a pixbuf image gets when insensitive, so the disabled
+  opacity is lower than before. The icons keep the scale the window opened
+  with. Glass stays off at any scale but 1, as before.
+- The launcher always runs the suite on the dark variant, so a light desktop
+  changes only what the desktop itself draws around the window.
+- Only Home is regrouped. The other tabs keep the official layouts.
+
 ## 2026-11-23 — Carry the Calc study across the suite
 
 - Added the suite stylesheet `native-header/office.css`, loaded by the header

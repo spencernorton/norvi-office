@@ -77,6 +77,13 @@ The unmodified engine fixes some details, so the study cannot be matched there:
 - Calc's cell properties deck first opens narrower than its content, with or
   without the stylesheet, until the side panel is dragged wider.
 
+The lab also ran Calc and Writer at scale 2 (2880 x 1800) and under a light
+desktop setting. At scale 2 the header's icons and window buttons are drawn at
+twice the size; they keep the scale the window opened with, and the glass header
+stays off at any scale but 1. The launcher runs the suite on the dark variant
+whatever the desktop's setting, so the light-desktop captures match the dark
+ones. Fractional scales and high contrast were not captured.
+
 ## Ribbon frame-ordering blocker
 
 The native draw hook reports a new boundary before committing the application's

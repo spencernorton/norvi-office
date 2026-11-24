@@ -15,6 +15,10 @@
 - Writer's style gallery shows a style name on two lines in full.
 - A command that only reports a state no longer shows an empty check box in
   menus, and side panel title bars keep their height.
+- The header's line icons and window buttons are drawn at the monitor's scale,
+  so they stay sharp at scale 2.
+- Calc's Home tab keeps only its own rules after a narrow window is widened
+  again, and no longer carries an empty indent group.
 
 ## 1.1.0 — One look across the suite
 

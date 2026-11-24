@@ -183,6 +183,11 @@ class PresentationRefreshTests(unittest.TestCase):
                 self.assertFalse({item.get("name") for item in tree.iter("widget")}
                                  - {item.get("id") for item in tree.iter("object")})
                 self.assertEqual(len(tree.findall("object[@id='Norvi Find and Select']/child")), len(spec["find"]))
+        calc = ET.fromstring(ribbon.ribbon({"GTK_THEME": "Yaru-purple-dark"}, native=True))
+        self.assertFalse({item.get("name") for item in calc.iter("widget")}
+                         - {item.get("id") for item in calc.iter("object")})
+        self.assertFalse([item for item in calc.find(".//object[@id='Home']").iter("object")
+                          if item.get("class") == "GtkSeparator" and not item.get("id").startswith("NorviRule")])
 
     def test_live_exact_profile_defers_without_touching_package_or_marker(self):
         with tempfile.TemporaryDirectory() as temporary:
