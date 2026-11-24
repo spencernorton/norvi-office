@@ -38,11 +38,12 @@ was captured and compared with the lab capture, and it was closed again.
 Impress and Base were opened with fictional documents inside a suite started
 from another menu entry, because their own entries first ask for a template or
 start a wizard. The first pass froze in Base; that defect is fixed (see the
-changelog), the package was rebuilt, and Calc and Base were checked again, with
-Base left open for a minute. Writer, Impress, Draw, Math and the start center
-were captured with the build before that fix, which differs only in the command
-broker and the launcher. Menus, dialogs, prompts and editing were checked in
-the lab only. Acceptance by the owner is still open.
+changelog), and Base then stayed open for a minute. A second pass, compared
+pixel for pixel with the lab at the same scale, showed three commands still
+drawn with the official glyphs on a profile that predates their artwork; that
+is fixed too. All seven were captured once more with the final build, where
+the four ribbon applications match the lab. Menus, dialogs, prompts and
+editing were checked in the lab only. Acceptance by the owner is still open.
 
 The [artwork receipt](command-artwork.md) records exact source command coverage.
 Unmatched command icons still come from the official Sifr theme. All-tabs icon
