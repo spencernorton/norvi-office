@@ -28,6 +28,10 @@
   buttons apply three times a second from a second thread, which Base's
   controller cannot take: memory was corrupted and every open window stopped.
   The header now asks on LibreOffice's own main thread, in every application.
+- Command artwork that changed since a profile's first start now shows.
+  LibreOffice keeps each icon it has drawn in the profile and went on showing
+  the old drawing; the launcher now clears those drawings whenever it replaces
+  the icon package. Each profile is refreshed once on its next start.
 - Opening Base first on a new profile no longer ends in a false "Office could
   not start" message.
 

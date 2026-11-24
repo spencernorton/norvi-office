@@ -96,11 +96,19 @@ class PresentationRefreshTests(unittest.TestCase):
             before = {path: path.read_bytes() for path in retained}
             package = root / "NorviDesktop.oxt"
             old = package.read_bytes()
+            drawn = profile / "cache/sifr_dark_svg/100/cmd/sc_navigator.png"
+            other = profile / "cache/skia.log"
+            for path in (drawn, other):
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"drawn before the artwork changed")
             with patch.object(launch, "profile_live", return_value=False), \
                     patch.object(launch.subprocess, "run", side_effect=install) as run, \
                     patch.object(launch, "prepare") as prepare, patch.object(launch, "connect") as connect:
                 self.assertEqual(launch.initialize(root, {}), profile)
                 self.assertIn("--force", run.call_args.args[0])
+                # Icons the engine drew from the old package must not outlive it.
+                self.assertFalse(drawn.parent.parent.parent.exists())
+                self.assertTrue(other.exists())
                 self.assertEqual(installed.read_bytes(), package.read_bytes())
                 with ZipFile(package) as archive, ZipFile(BytesIO(archive.read("iconsets/images_sifr_dark_svg.zip"))) as theme:
                     self.assertIn("cmd/lc_presentationcurrentslide.svg", theme.namelist())
@@ -111,7 +119,10 @@ class PresentationRefreshTests(unittest.TestCase):
                 self.assertEqual(record["retained"], "metadata")
                 self.assertEqual(next(root.glob("NorviDesktop.backup-*.oxt")).read_bytes(), old)
                 marker = (root / "profile-ready.json").read_bytes()
+                drawn.parent.mkdir(parents=True)
+                drawn.write_bytes(b"drawn from the new package")
                 launch.initialize(root, {})
+                self.assertTrue(drawn.exists(), "A start with nothing to refresh keeps the drawn icons")
                 self.assertEqual(run.call_count, 1)
                 self.assertEqual((root / "profile-ready.json").read_bytes(), marker)
                 prepare.assert_not_called()
@@ -197,6 +208,9 @@ class PresentationRefreshTests(unittest.TestCase):
     def test_live_exact_profile_defers_without_touching_package_or_marker(self):
         with tempfile.TemporaryDirectory() as temporary:
             launch, root, profile, _retained, _installed, _install = fixture(Path(temporary))
+            drawn = profile / "cache/sifr_dark_svg/100/cmd/sc_navigator.png"  # in the snapshot below
+            drawn.parent.mkdir(parents=True)
+            drawn.write_bytes(b"drawn by the open Office")
             proc = Path(temporary) / "proc"
             process = proc / "123"
             process.mkdir(parents=True)

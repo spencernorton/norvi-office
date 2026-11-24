@@ -33,7 +33,7 @@ headless initialization and disposable qualification processes.
 | Office start center | Direct suite launcher and desktop entry; suite stylesheet | 1.2.0 from its menu entry; capture checked; not yet accepted |
 
 The last column records one check of the 1.2.0 candidate on 2026-11-24. Each
-module was opened on the real desktop at 3840 x 2160 and scale 2, its window
+module was opened on the real desktop at 3840 x 2160 and scale 1, its window
 was captured and compared with the lab capture, and it was closed again.
 Impress and Base were opened with fictional documents inside a suite started
 from another menu entry, because their own entries first ask for a template or

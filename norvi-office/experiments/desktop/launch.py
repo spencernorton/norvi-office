@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import secrets
+import shutil
 import signal
 import subprocess
 import sys
@@ -59,7 +60,8 @@ def command(app, files, profile=None, pipe=None):
 
 def presentation_revision():
     """Hash inputs, ignoring ZIP timestamps and ordering from package builds."""
-    digest = sha256(b"norvi-desktop-presentation-v1\0")
+    # v2: a refresh also clears the engine's rendered icons, so each profile refreshes once more.
+    digest = sha256(b"norvi-desktop-presentation-v2\0")
 
     def add(name, contents):
         for value in (name.encode(), contents):
@@ -216,6 +218,9 @@ def refresh_presentation(root, profile, env, record):
             owned_package(package, previous)
             candidate.replace(package)
             replaced = True
+            # The engine keeps each icon it has drawn, by name: changed artwork would keep its old drawing.
+            for style in ("sifr_dark_svg", "sifr_svg"):
+                shutil.rmtree(profile / "cache" / style, ignore_errors=True)
             quiet_shortcuts(profile)
             marker.write_text(json.dumps({**record, "presentation_revision": revision,
                                          "presentation_package_sha256": current,

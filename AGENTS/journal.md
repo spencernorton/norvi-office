@@ -1,5 +1,31 @@
 # Journal
 
+## 2026-11-24 — Changed artwork did not reach a profile that had drawn the old icon
+
+- Found comparing the real desktop with the lab at the same scale: Navigator,
+  Print Preview and Formatting Marks showed the official glyphs on the real
+  profile and ours in the lab, from the same package.
+- Cause: the engine keeps every icon it renders under `cache/<icon style>/` in
+  the profile, by icon name only. The real profile first drew those three
+  before they had artwork of ours, and kept serving that drawing. A lab profile
+  is new on every run, so the lab could not show it.
+- Fix: `refresh_presentation` removes `cache/sifr_dark_svg` and
+  `cache/sifr_svg` after it replaces the package (the profile is closed at that
+  point; the engine draws them again). The revision seed moved to v2 so a
+  profile that already holds the current package is refreshed once more.
+- Deliberately simple: a cache directory that cannot be removed is left as it
+  is. An old drawing is cosmetic; stopping the start over it would not be.
+- Two independent reviews confirmed the engine's behaviour from its source
+  (the cache key is style, scale and icon name; nothing else lives under the
+  style directory) and that the refresh path keeps user files. The lab shows
+  it end to end: a stand-in drawing placed in the cache is shown for
+  Navigator, and a refresh brings the real one back.
+- Correction: the real desktop used for the 1.2.0 check runs at scale 1, not 2
+  as first recorded in the qualification notes. Scale 2 has only been seen in
+  the lab.
+- Lesson for checks: a new profile cannot show upgrade defects. Compare the
+  real profile with the lab pixel for pixel when both run at one scale.
+
 ## 2026-11-24 — Find group: the small buttons start at the left edge everywhere
 
 - The official Writer, Impress and Draw layouts right-align the small button
