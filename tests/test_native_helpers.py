@@ -86,14 +86,28 @@ class NativeHelperTests(unittest.TestCase):
                     return start_over.call_args_list
 
                 self.assertEqual(close({}), [])  # no launcher record: the isolated harness
+                self.assertEqual(close([]), [])  # a record that is not one
                 self.assertEqual(close({"office_group": suite.pid}, "other"), [])  # not this suite's process
                 self.assertEqual(close({"office_group": suite.pid}), [call(sys.executable, sys.orig_argv)])
+                # Starting over fails: the helper still leaves instead of staying with a closed pipe.
+                with patch.dict(actions.os.environ, {"NORVI_OFFICE_SESSION_DIR": directory}), \
+                        patch.object(actions.os, "execv", side_effect=OSError("no interpreter")), \
+                        patch.object(actions.os, "_exit") as leave, self.assertRaises(OSError):
+                    actions.Gone("check").disposing(None)
+                leave.assert_called_once_with(0)
                 suite.kill()
                 suite.wait()
                 self.assertEqual(close({"office_group": suite.pid}), [])  # the suite has gone
         finally:
             suite.kill()
             suite.wait()
+
+    @unittest.skipUnless(importlib.util.find_spec("uno"), "LibreOffice's Python bridge required")
+    def test_helper_waiting_for_a_restarted_engine_leaves_once_the_suite_has_gone(self):
+        actions = broker()
+        with patch.object(actions, "suite", return_value=False), self.assertRaises(SystemExit) as stop:
+            actions.Broker("norvi-check-no-such-pipe", "token")
+        self.assertEqual(stop.exception.code, 0)
 
     def test_reused_pid_and_other_session_are_not_accepted_as_live_helpers(self):
         launch = runtime()

@@ -48,7 +48,7 @@ def suite(pipe):
     the launcher's record (the isolated harness). That process outlives an engine that restarts itself in place."""
     try:
         leader = json.loads(Path(os.environ["NORVI_OFFICE_SESSION_DIR"], "running.json").read_text())["office_group"]
-    except (KeyError, OSError, ValueError):
+    except (KeyError, OSError, TypeError, ValueError):
         return None
     try:
         return f"--accept=pipe,name={pipe};urp;".encode() in Path(f"/proc/{leader}/cmdline").read_bytes().split(b"\0")
@@ -63,9 +63,11 @@ class Gone(unohelper.Base, XEventListener):
         self.pipe = pipe
 
     def disposing(self, _event):
-        if suite(self.pipe):
-            os.execv(sys.executable, sys.orig_argv)
-        os._exit(0)
+        try:
+            if suite(self.pipe):
+                os.execv(sys.executable, sys.orig_argv)
+        finally:
+            os._exit(0)  # whatever failed above, never stay behind with a closed pipe
 
 
 class OnMain(unohelper.Base, XCallback):

@@ -1,5 +1,25 @@
 # Journal
 
+## 2026-11-24 — Review of the restart change: the helper leaves even when starting over fails
+
+- One independent review of the change below, against the engine's source
+  where it mattered. One defect, rare: if the helper could not replace itself
+  (the interpreter gone after an upgrade) or the launcher's record was not a
+  record, nothing ended it. It would have stayed with a closed pipe, holding
+  its bus name and logging a failed description three times a second until
+  the next new start. Leaving now runs whatever happens before it.
+- Confirmed by the review from source: the pipe is closed across the
+  replacement; a signal still ends the helper afterwards; a listener added to
+  a bridge that has already ended is told at once; a half-written record makes
+  the helper keep waiting rather than leave; a reused process ID would need
+  the exact pipe argument.
+- Tests added: starting over fails and the helper still leaves; a helper
+  waiting for an engine leaves once the suite has gone, through the real
+  connect loop against a pipe that does not exist. Both lab probes pass again.
+- Not settled from source: whether the bus socket is closed across the
+  replacement. The lab and the real desktop both show the name owned again
+  afterwards.
+
 ## 2026-11-24 — The header helper follows an engine that restarts itself
 
 - Measured first, before any change: after `OfficeRestartManager.requestRestart`
