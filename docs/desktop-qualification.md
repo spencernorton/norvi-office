@@ -37,7 +37,7 @@ module was opened on the real desktop at 3840 x 2160 and scale 1, its window
 was captured and compared with the lab capture, and it was closed again.
 Impress and Base were opened with fictional documents inside a suite started
 from another menu entry, because their own entries first ask for a template or
-start a wizard. The first pass froze in Base; that defect is fixed (see the
+start a wizard; those two screens were captured in the lab only. The first pass froze in Base; that defect is fixed (see the
 changelog), and Base then stayed open for a minute. A second pass, compared
 pixel for pixel with the lab at the same scale, showed three commands still
 drawn with the official glyphs on a profile that predates their artwork; that

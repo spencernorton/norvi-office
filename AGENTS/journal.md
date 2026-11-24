@@ -1,5 +1,18 @@
 # Journal
 
+## 2026-11-24 — First screens of Impress and Base from their own entries
+
+- Impress started without a document opens its template chooser, and Base its
+  database wizard. Neither had been captured: every earlier check opened both
+  with a fictional document. A lab run started each with no document, as the
+  menu entry does.
+- Both carry the suite's look without a change: dark panels, the suite's
+  fields and drop-downs, the purple default button, readable labels, and the
+  template thumbnails on the dark well.
+- Not checked: the same two screens on the real desktop (closing them there
+  means stopping the suite under a modal dialog), choosing a template, and the
+  wizard's later pages.
+
 ## 2026-11-24 — The header helper leaves with the engine; Draw's zoom glyph
 
 - `actions.py` stayed behind after the last window closed, until the next
