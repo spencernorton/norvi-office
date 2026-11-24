@@ -421,6 +421,8 @@ def launch(app, files):
                     transformer = context.ServiceManager.createInstanceWithContext("com.sun.star.util.URLTransformer", context)
                     _, url = transformer.parseStrict(url)
                     dispatch = frame.queryDispatch(url, "", 0)
+                    if dispatch is None:
+                        break  # Base has no sidebar: the first window that has one sets the default
                     listener = Sidebar()
                     dispatch.addStatusListener(listener, url)
                     dispatch.removeStatusListener(listener, url)

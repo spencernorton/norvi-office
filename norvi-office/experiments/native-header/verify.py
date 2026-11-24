@@ -20,7 +20,7 @@ from PIL import Image, ImageChops
 
 from fixtures import connect, prop, stop_office
 from geometry_relay import header_bars, geometry
-from actions import Status
+from actions import Status, on_main
 from routing import COMMANDS
 
 ROOT = Path(sys.argv[1]).resolve()
@@ -141,13 +141,16 @@ def native_enabled(context, owner, command):
     url = uno.createUnoStruct("com.sun.star.util.URL")
     url.Complete = COMMANDS[command]
     _, url = transformer.parseStrict(url)
-    dispatch = owner.queryDispatch(url, "", 0)
-    if dispatch is None:
-        return False
-    listener = Status()
-    dispatch.addStatusListener(listener, url)
-    dispatch.removeStatusListener(listener, url)
-    return listener.enabled
+
+    def ask():
+        dispatch = owner.queryDispatch(url, "", 0)
+        if dispatch is None:
+            return False
+        listener = Status()
+        dispatch.addStatusListener(listener, url)
+        dispatch.removeStatusListener(listener, url)
+        return listener.enabled
+    return on_main(context.ServiceManager.createInstanceWithContext("com.sun.star.awt.AsyncCallback", context), ask, 10)
 
 
 def activate(name):

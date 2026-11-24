@@ -23,6 +23,12 @@
   is as wide as the other applications', and Calc's Formulas tab is centred in
   the card.
 - Draw's fill colour sits in a field like the fill type beside it.
+- A Base window no longer freezes the suite. The header asked Base which of its
+  buttons apply three times a second from a second thread, which Base's
+  controller cannot take: memory was corrupted and every open window stopped.
+  The header now asks on LibreOffice's own main thread, in every application.
+- Opening Base first on a new profile no longer ends in a false "Office could
+  not start" message.
 
 ## 1.1.0 — One look across the suite
 

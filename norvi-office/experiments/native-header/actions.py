@@ -3,12 +3,14 @@ import json
 import os
 from pathlib import Path
 import sys
+import threading
 import time
 
 import uno
 import unohelper
 from urllib.parse import unquote, urlsplit
 
+from com.sun.star.awt import XCallback
 from com.sun.star.frame import XStatusListener
 from gi.repository import Gio, GLib
 
@@ -40,6 +42,38 @@ class Status(unohelper.Base, XStatusListener):
         self.enabled = False
 
 
+class OnMain(unohelper.Base, XCallback):
+    """One piece of work for Office's own main thread."""
+    def __init__(self, work):
+        self.work = work
+        self.done = threading.Event()
+        self.result = self.error = None
+
+    def notify(self, _data):
+        work = self.work
+        if work is None:
+            return
+        try:
+            self.result = work()
+        except Exception as error:
+            self.error = error
+        self.done.set()
+
+
+def on_main(main, work, wait=0.9):
+    """Base's controller is main-thread only: asking it from a bridge thread corrupted Office's
+    memory and froze every open window. `main` is Office's AsyncCallback service; the calls
+    `work` makes run on the thread that calls it back."""
+    task = OnMain(work)
+    main.addCallback(task, None)
+    if not task.done.wait(wait):
+        task.work = None  # Office is busy and the caller has stopped waiting
+        raise TimeoutError
+    if task.error:
+        raise task.error
+    return task.result
+
+
 class Broker:
     def __init__(self, pipe, token):
         self.token = token
@@ -62,6 +96,7 @@ class Broker:
         self.desktop = manager.createInstanceWithContext("com.sun.star.frame.Desktop", self.context)
         self.transformer = manager.createInstanceWithContext("com.sun.star.util.URLTransformer", self.context)
         self.dispatcher = manager.createInstanceWithContext("com.sun.star.frame.DispatchHelper", self.context)
+        self.main = manager.createInstanceWithContext("com.sun.star.awt.AsyncCallback", self.context)
         self.bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
         self.registration = self.bus.register_object(
             "/dev/norvi/OfficeHeader", Gio.DBusNodeInfo.new_for_xml(API).interfaces[0],
@@ -114,14 +149,19 @@ class Broker:
             pid, handle, identity = arguments[:3]
             frame = self.frame(sender, pid, handle, identity, arguments[-1], bind=method == "Describe")
             if method == "Describe":
-                states = {name: frame is not None and self.enabled(frame, name) for name in COMMANDS}
+                # The header gives up on a description after one second.
+                states = {name: False for name in COMMANDS} if frame is None else on_main(
+                    self.main, lambda: {name: self.enabled(frame, name) for name in COMMANDS})
                 invocation.return_value(GLib.Variant("(a{sb})", (states,)))
             elif method == "Activate":
                 command = arguments[3]
                 allowed = frame is not None and command in COMMANDS
                 if allowed:
-                    frame.activate()
-                    allowed = self.enabled(frame, command)
+                    def ready():
+                        frame.activate()
+                        return self.enabled(frame, command)
+                    # The header waits 30 s for an action, so a busy Office still gets the click.
+                    allowed = on_main(self.main, ready, 25)
                 if allowed:
                     # Dispatch against the matched frame, preserving LibreOffice's
                     # own Save/Open dialogs, undo manager and command semantics.

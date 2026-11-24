@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
+import threading
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
@@ -19,7 +20,56 @@ def runtime():
         return module
 
 
+def broker():
+    header = ROOT / "norvi-office/experiments/native-header"
+    with patch.object(sys, "path", [str(header), *sys.path]):
+        spec = importlib.util.spec_from_file_location("native_broker_test", header / "actions.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+
 class NativeHelperTests(unittest.TestCase):
+    @unittest.skipUnless(importlib.util.find_spec("uno"), "LibreOffice's Python bridge required")
+    def test_command_state_is_asked_on_the_office_main_thread_or_not_at_all(self):
+        actions = broker()
+        # Office calls the work back later, from its own main thread.
+        later = SimpleNamespace(addCallback=lambda task, _data: threading.Thread(
+            target=task.notify, args=(None,)).start())
+        self.assertEqual(actions.on_main(later, lambda: 7), 7)
+        with self.assertRaises(KeyError):
+            actions.on_main(later, lambda: {}["missing"])
+        # A busy Office answers too late: the caller gets an error and work not yet started never runs.
+        late, ran = [], []
+        never = SimpleNamespace(addCallback=lambda task, _data: late.append(task))
+        with patch.object(actions.threading.Event, "wait", return_value=False), self.assertRaises(TimeoutError):
+            actions.on_main(never, lambda: ran.append(1))
+        late[0].notify(None)
+        self.assertEqual(ran, [])
+
+        # A description and an action touch the frame only from inside that callback.
+        inside, touched, replies = [], [], []
+
+        def call_back(task, _data):
+            inside.append(True)
+            task.notify(None)
+            inside.pop()
+        instance = actions.Broker.__new__(actions.Broker)
+        instance.main = SimpleNamespace(addCallback=call_back)
+        instance.frame = lambda *_arguments, **_options: SimpleNamespace(
+            activate=lambda: touched.append(("activate", bool(inside))))
+        instance.enabled = lambda _frame, name: touched.append((name, bool(inside))) or True
+        instance.dispatcher = SimpleNamespace(executeDispatch=lambda *arguments: replies.append(arguments[1]))
+        invocation = SimpleNamespace(return_value=replies.append, return_dbus_error=lambda *error: replies.append(error))
+        instance.call(None, ":1.7", None, None, "Describe",
+                      SimpleNamespace(unpack=lambda: (1, 2, "window", "token")), invocation)
+        instance.call(None, ":1.7", None, None, "Activate",
+                      SimpleNamespace(unpack=lambda: (1, 2, "window", "save", "token")), invocation)
+        self.assertEqual([name for name, _on_main in touched], [*actions.COMMANDS, "activate", "save"])
+        self.assertTrue(all(on_main for _name, on_main in touched))
+        self.assertEqual(replies[1], ".uno:Save")
+        self.assertEqual(len(replies), 3)
+
     def test_reused_pid_and_other_session_are_not_accepted_as_live_helpers(self):
         launch = runtime()
         with tempfile.TemporaryDirectory() as directory:

@@ -1,5 +1,41 @@
 # Journal
 
+## 2026-11-24 — Base froze the suite: command state is asked on the main thread
+
+- Found on the real desktop while checking 1.2.0: a Base window stopped
+  answering and took the whole Office process with it. The stack showed glibc
+  aborting on a corrupted heap (`malloc(): smallbin double linked list
+  corrupted`) inside a bridge thread, and the engine's own crash handler then
+  waiting for the same heap lock, so the process hung instead of exiting.
+- Cause: `actions.py` answered each `Describe` (every 350 ms per window) by
+  adding and removing a status listener per command from the bridge's thread.
+  Writer, Calc, Impress, Draw and Math take the engine's main lock inside that
+  call. Base's controller (`dbaui::OGenericUnoController`) takes none: its
+  listener list and state cache are main-thread only, so the two threads freed
+  the same memory. The defect dates from the first native header, not from 1.2.0.
+- Fix: `actions.on_main` hands the work to `com.sun.star.awt.AsyncCallback`.
+  Office calls it back from its main thread, and the bridge keeps the caller's
+  thread identity, so every call made inside the callback runs on that thread.
+  A description waits 0.9 s for that callback (the header gives up after one
+  second) and an action 25 s (the header waits 30); after that the header is
+  told the action is unavailable, and work that has not started never runs.
+  Finding the frame still happens on the bridge thread, through code that
+  takes the engine's own lock.
+- Proof in the lab (a local stress probe, not committed): the old way,
+  hammered while the Base categories are clicked, kills the engine within
+  seconds with the same class of heap error; the same hammer through
+  `AsyncCallback` runs for two minutes (38,479 rounds, about 3 ms of main-thread
+  time each) with Base alive and its header states right. Any helper that asks
+  a frame for state goes through `on_main`; `verify.py` now does, but
+  `capture.sh` was not rerun after that change.
+- The launcher's first-window sidebar default asked a dispatch that Base does
+  not have, so opening Base first on a new profile raised "Office could not
+  start" over a working window. It now leaves the default for the next start
+  whose first window has a sidebar.
+- A hung Office started by a check script is closed by killing its process
+  group, then its broker; `RecoveryInfo` held no session data afterwards. Do not
+  run a real-desktop check under `timeout` without a cleanup path.
+
 ## 2026-11-23 — Grouped Home tabs beyond Calc, and a header that follows the scale
 
 - `calc_ribbon.py` now builds the Home tab of Writer, Impress and Draw from the
