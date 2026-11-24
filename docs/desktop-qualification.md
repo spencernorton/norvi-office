@@ -44,8 +44,11 @@ drawn with the official glyphs on a profile that predates their artwork; that
 is fixed too. All seven were then captured once more, and the four ribbon
 applications matched the lab. Two small changes followed (the header's helper
 process leaves with the suite; Zoom & Pan has the suite's artwork): with that
-last build Calc and Draw were opened again, and the helper was gone after each
-close. Menus, dialogs, prompts and editing were checked in the lab only.
+build Calc and Draw were opened again, and the helper was gone after each
+close. In the last build the helper waits for a suite that restarts itself in
+place: Calc was opened, the suite was restarted in place, the same helper was
+serving again afterwards, and it was gone after the close. Menus, dialogs,
+prompts and editing were checked in the lab only.
 Acceptance by the owner is still open.
 
 The [artwork receipt](command-artwork.md) records exact source command coverage.
