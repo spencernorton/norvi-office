@@ -1,5 +1,37 @@
 # Journal
 
+## 2026-11-24 — The header helper follows an engine that restarts itself
+
+- Measured first, before any change: after `OfficeRestartManager.requestRestart`
+  the engine came back under a new process ID, the helper was gone and the
+  header's Undo did nothing. The next start through a menu entry brought a
+  helper back, and Undo then worked in the new and in the old window. The gap
+  in the entry below was reasoning until this probe.
+- Fix: when the engine closes the pipe, the helper looks at the process the
+  launcher started (`office_group` in `running.json`, recognised by its
+  `--accept` argument, which `launch.running()` also checks). That
+  process outlives an in-place restart. While it is there the helper replaces
+  itself and waits for the pipe; once it has gone, at the close or during the
+  wait, the helper leaves.
+- The first attempt asked whether the suite's process group was alive. Wrong
+  test: two sandboxed image loaders the engine starts (`glycin-svg`,
+  `glycin-image-rs`) stay in that group after it exits, so the helper waited
+  its full 15 s after every normal close and ended with a traceback. A trace
+  showed the engine and its parent gone 0.4 s after the close and only the
+  loaders left.
+- Lab with the final code: Undo works after an in-place restart through the
+  same helper process, a later menu start does not replace it, the helper is
+  gone 0.3 s after a normal close and 0.1 s after a kill, and its log is clean.
+- Known gaps: after a crash the engine comes back without its `--accept`
+  argument (its own behaviour), so the helper waits 15 s and leaves with an
+  error, and a later menu start recovers as before; an engine that needs more
+  than 15 s to come back does the same.
+- Found on the way, not changed here: on the real desktop every run of the
+  suite leaves those two image-loader processes behind (dozens by now, the
+  oldest many days old, all owned by the session manager). Whether the
+  official LibreOffice launcher leaves them too was not checked, and none
+  were stopped.
+
 ## 2026-11-24 — First screens of Impress and Base from their own entries
 
 - Impress started without a document opens its template chooser, and Base its

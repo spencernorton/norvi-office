@@ -43,9 +43,28 @@ class Status(unohelper.Base, XStatusListener):
         self.enabled = False
 
 
+def suite(pipe):
+    """Whether the process the launcher started is still there, checked as the launcher checks it; None without
+    the launcher's record (the isolated harness). That process outlives an engine that restarts itself in place."""
+    try:
+        leader = json.loads(Path(os.environ["NORVI_OFFICE_SESSION_DIR"], "running.json").read_text())["office_group"]
+    except (KeyError, OSError, ValueError):
+        return None
+    try:
+        return f"--accept=pipe,name={pipe};urp;".encode() in Path(f"/proc/{leader}/cmdline").read_bytes().split(b"\0")
+    except OSError:
+        return False
+
+
 class Gone(unohelper.Base, XEventListener):
-    """Office closed its end of the pipe: nothing is left to serve, so the helper leaves with it."""
+    """Office closed its end of the pipe. While the suite's own process is still there its engine may be
+    restarting itself, so the helper starts over and waits for it; once the suite has gone the helper leaves."""
+    def __init__(self, pipe):
+        self.pipe = pipe
+
     def disposing(self, _event):
+        if suite(self.pipe):
+            os.execv(sys.executable, sys.orig_argv)
         os._exit(0)
 
 
@@ -93,10 +112,12 @@ class Broker:
                 self.context = resolver.resolve(f"uno:pipe,name={pipe};urp;StarOffice.ComponentContext")
                 break
             except Exception:
+                if suite(pipe) is False:
+                    sys.exit(0)  # the suite closed: this helper was only waiting in case its engine came back
                 time.sleep(0.1)
         else:
             raise RuntimeError("Private LibreOffice pipe did not become available")
-        self.gone = Gone()
+        self.gone = Gone(pipe)
         for bridge in local.ServiceManager.createInstanceWithContext(
                 "com.sun.star.bridge.BridgeFactory", local).getExistingBridges():
             bridge.addEventListener(self.gone)

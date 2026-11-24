@@ -34,6 +34,9 @@
   the icon package. Each profile is refreshed once on its next start.
 - The header's helper process leaves when LibreOffice closes, instead of
   staying until the next start.
+  When LibreOffice restarts itself in place ("Restart Now" after an option
+  change), the helper waits for it, so the header's buttons work again as soon
+  as it is back.
 - The Zoom & Pan command in Draw and Impress uses the suite's line artwork,
   as on the small button above Draw's Find & Select.
 - Opening Base first on a new profile no longer ends in a false "Office could

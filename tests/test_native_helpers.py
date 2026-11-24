@@ -1,12 +1,13 @@
 import importlib.util
 import json
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import threading
 from types import SimpleNamespace
 import unittest
-from unittest.mock import patch
+from unittest.mock import call, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -71,11 +72,28 @@ class NativeHelperTests(unittest.TestCase):
         self.assertEqual(len(replies), 3)
 
     @unittest.skipUnless(importlib.util.find_spec("uno"), "LibreOffice's Python bridge required")
-    def test_helper_leaves_when_office_closes_the_pipe(self):
+    def test_helper_leaves_with_the_suite_and_starts_over_for_a_restarted_engine(self):
         actions = broker()
-        with patch.object(actions.os, "_exit") as leave:
-            actions.Gone().disposing(None)
-        leave.assert_called_once_with(0)
+        suite = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)", "--accept=pipe,name=check;urp;"])
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                def close(record, pipe="check"):
+                    Path(directory, "running.json").write_text(json.dumps(record))
+                    with patch.dict(actions.os.environ, {"NORVI_OFFICE_SESSION_DIR": directory}), \
+                            patch.object(actions.os, "execv") as start_over, patch.object(actions.os, "_exit") as leave:
+                        actions.Gone(pipe).disposing(None)
+                    leave.assert_called_once_with(0)
+                    return start_over.call_args_list
+
+                self.assertEqual(close({}), [])  # no launcher record: the isolated harness
+                self.assertEqual(close({"office_group": suite.pid}, "other"), [])  # not this suite's process
+                self.assertEqual(close({"office_group": suite.pid}), [call(sys.executable, sys.orig_argv)])
+                suite.kill()
+                suite.wait()
+                self.assertEqual(close({"office_group": suite.pid}), [])  # the suite has gone
+        finally:
+            suite.kill()
+            suite.wait()
 
     def test_reused_pid_and_other_session_are_not_accepted_as_live_helpers(self):
         launch = runtime()
