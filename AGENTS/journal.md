@@ -1,5 +1,36 @@
 # Journal
 
+## 2026-11-24 — The header helper leaves with the engine; Draw's zoom glyph
+
+- `actions.py` stayed behind after the last window closed, until the next
+  start stopped it. It now listens on its own end of the pipe (the bridge from
+  the local `BridgeFactory`) and exits when the engine closes it. That covers a
+  normal close, a kill and a crash alike.
+- Lab: the header's Undo still works through the helper, the helper stays
+  through 20 s with an idle window, is gone 0.1 s after a normal close and
+  0.1 s after the engine is killed, and a later start gets a working one. The
+  helper's log no longer ends with a failed description at shutdown.
+- Known gap: if the engine restarts itself in place (for example "Restart
+  Now" after an option changed through the header's Settings button), the
+  header's buttons stay off until the next start through a menu entry brings
+  a helper back; the header keeps asking, so open windows recover then.
+  Before this change they stayed off until the suite was closed and reopened.
+  A helper that starts itself again and waits for the pipe would close the
+  gap; it was left out because it lingers 15 s after every normal close.
+- One independent review against the engine's source: the bridge factory is
+  one instance per context, the bridge tells its listeners when the engine's
+  end closes, and the helper cannot lose the bridge while the engine is usable.
+- Known gap: the check harnesses signal the recorded helper PID after the
+  engine has gone. The helper has left by then; a recycled PID within those
+  seconds is not guarded against outside the launcher.
+- Draw's Zoom & Pan button (`.uno:ZoomMode`) shares the Zoom artwork through
+  the alias table: 142 keys. In the lab only that 16 px box changed in Draw's
+  Home tab; the command also sits on the View tab, the zoom bar and the menus
+  of Draw and Impress, which show the same artwork and were not captured.
+- Started without an accessibility bus, as in one check environment, the
+  geometry helper stops at once. Not looked into: it only feeds the glass
+  header, which stays off.
+
 ## 2026-11-24 — Changed artwork did not reach a profile that had drawn the old icon
 
 - Found comparing the real desktop with the lab at the same scale: Navigator,

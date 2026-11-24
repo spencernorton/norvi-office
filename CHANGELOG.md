@@ -32,6 +32,10 @@
   LibreOffice keeps each icon it has drawn in the profile and went on showing
   the old drawing; the launcher now clears those drawings whenever it replaces
   the icon package. Each profile is refreshed once on its next start.
+- The header's helper process leaves when LibreOffice closes, instead of
+  staying until the next start.
+- The Zoom & Pan command in Draw and Impress uses the suite's line artwork,
+  as on the small button above Draw's Find & Select.
 - Opening Base first on a new profile no longer ends in a false "Office could
   not start" message.
 

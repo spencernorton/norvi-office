@@ -25,7 +25,7 @@ every recorded command at 16, 24 and 32 pixels. It also checks native alias
 replacement, untouched fallback aliases, field artwork and theme license
 retention. No official icon ZIP is vendored.
 
-The theme now contains 141 command keys, including semantic aliases. Seventy
+The theme now contains 142 command keys, including semantic aliases. Seventy
 additional keys fill the audited gaps: text and shape tools; objects, media and
 fields; slide creation and playback; Writer navigation and text controls; and
 shared Open, Save, Undo, Redo and Print commands. The existing 24-unit drawing

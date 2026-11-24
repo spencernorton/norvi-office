@@ -175,7 +175,7 @@ for alias, original in {
     "cellvertbottom": "alignbottom", "outlineright": "incrementindent", "outlineleft": "decrementindent",
     "functionbox": "functiondialog", "text": "drawtext", "insertfieldctrl": "fieldmenu",
     "calloutshapes": "drawcaption", "insertobjectstarmath": "insertmath",
-    "openfromcalc": "open", "openfromwriter": "open",
+    "openfromcalc": "open", "openfromwriter": "open", "zoommode": "zoom",
 }.items():
     ICONS[alias] = ICONS[original]
 

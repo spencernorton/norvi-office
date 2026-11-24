@@ -70,6 +70,13 @@ class NativeHelperTests(unittest.TestCase):
         self.assertEqual(replies[1], ".uno:Save")
         self.assertEqual(len(replies), 3)
 
+    @unittest.skipUnless(importlib.util.find_spec("uno"), "LibreOffice's Python bridge required")
+    def test_helper_leaves_when_office_closes_the_pipe(self):
+        actions = broker()
+        with patch.object(actions.os, "_exit") as leave:
+            actions.Gone().disposing(None)
+        leave.assert_called_once_with(0)
+
     def test_reused_pid_and_other_session_are_not_accepted_as_live_helpers(self):
         launch = runtime()
         with tempfile.TemporaryDirectory() as directory:

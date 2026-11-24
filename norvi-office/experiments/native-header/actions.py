@@ -12,6 +12,7 @@ from urllib.parse import unquote, urlsplit
 
 from com.sun.star.awt import XCallback
 from com.sun.star.frame import XStatusListener
+from com.sun.star.lang import XEventListener
 from gi.repository import Gio, GLib
 
 from routing import COMMANDS, matching_frame, uses_pipe
@@ -40,6 +41,12 @@ class Status(unohelper.Base, XStatusListener):
 
     def disposing(self, _event):
         self.enabled = False
+
+
+class Gone(unohelper.Base, XEventListener):
+    """Office closed its end of the pipe: nothing is left to serve, so the helper leaves with it."""
+    def disposing(self, _event):
+        os._exit(0)
 
 
 class OnMain(unohelper.Base, XCallback):
@@ -89,6 +96,10 @@ class Broker:
                 time.sleep(0.1)
         else:
             raise RuntimeError("Private LibreOffice pipe did not become available")
+        self.gone = Gone()
+        for bridge in local.ServiceManager.createInstanceWithContext(
+                "com.sun.star.bridge.BridgeFactory", local).getExistingBridges():
+            bridge.addEventListener(self.gone)
         manager = self.context.ServiceManager
         expected_profile = os.environ.get("NORVI_OFFICE_PROFILE_URI")
         if expected_profile:
