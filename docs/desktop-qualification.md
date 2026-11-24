@@ -41,9 +41,12 @@ start a wizard. The first pass froze in Base; that defect is fixed (see the
 changelog), and Base then stayed open for a minute. A second pass, compared
 pixel for pixel with the lab at the same scale, showed three commands still
 drawn with the official glyphs on a profile that predates their artwork; that
-is fixed too. All seven were captured once more with the final build, where
-the four ribbon applications match the lab. Menus, dialogs, prompts and
-editing were checked in the lab only. Acceptance by the owner is still open.
+is fixed too. All seven were then captured once more, and the four ribbon
+applications matched the lab. Two small changes followed (the header's helper
+process leaves with the suite; Zoom & Pan has the suite's artwork): with that
+last build Calc and Draw were opened again, and the helper was gone after each
+close. Menus, dialogs, prompts and editing were checked in the lab only.
+Acceptance by the owner is still open.
 
 The [artwork receipt](command-artwork.md) records exact source command coverage.
 Unmatched command icons still come from the official Sifr theme. All-tabs icon
