@@ -22,8 +22,7 @@
 - The rules between groups are one height in every Home tab, Calc's first group
   is as wide as the other applications', and Calc's Formulas tab is centred in
   the card.
-- Draw's fill colour sits in a field like the fill type beside it, and Writer's
-  style gallery has a hairline edge and a rounded selection.
+- Draw's fill colour sits in a field like the fill type beside it.
 
 ## 1.1.0 — One look across the suite
 

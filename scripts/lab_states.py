@@ -10,8 +10,8 @@ import time
 import lab
 
 # Ribbon and header controls of a maximised 1440 px Calc window, relative to its frame.
-POPUPS = (("calc-menu", 1231, 23), ("calc-find", 1368, 146), ("calc-number", 805, 110),
-          ("calc-font", 355, 110), ("calc-borders", 291, 147))
+POPUPS = (("calc-menu", 1231, 23), ("calc-find", 1368, 146), ("calc-number", 797, 110),
+          ("calc-font", 347, 110), ("calc-borders", 283, 147))
 
 
 def dispatch(command, settle=2.5):

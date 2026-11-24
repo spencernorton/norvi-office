@@ -73,6 +73,8 @@ The unmodified engine fixes some details, so the study cannot be matched there:
 - drop-down lists of ribbon fields, the Borders palette, Impress's layout
   thumbnails and Draw's line style preview are drawn by the engine with square
   corners and stock artwork;
+- Writer's style gallery draws its selected tile flush with the panel, and the
+  tile is taller than the panel shows, so it cannot be inset or rounded;
 - Base draws its section titles black on a dark desktop, so their band stays
   light enough to read them.
 - Calc's cell properties deck first opens narrower than its content, with or

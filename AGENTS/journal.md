@@ -30,6 +30,12 @@
 - A ribbon control built from native widgets sits on a plate the engine paints
   in the window colour. A field covers it; Draw's fill colour did not, so it now
   has a field of its own. The stylesheet cannot remove the plate itself.
+- The style gallery's selector also matches Impress's layout list in the side
+  panel, so it carries only what suits both (a minimum height and the label
+  size). An edge or radius there boxed the layout list and broke at the
+  gallery's corners, where the selected tile paints over it.
+- `lab_states.py` clicks fixed points in Calc's Home tab; move them when a group
+  changes width, or a popup capture silently shows the wrong control.
 - A profile's module ribbon counts as the launcher's when it equals the recorded
   hash or the layout this runtime would write, so a run interrupted before its
   record was saved does not turn its own file into "the user's".
