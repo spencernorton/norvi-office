@@ -24,13 +24,21 @@ headless initialization and disposable qualification processes.
 
 | Application | Interface coverage in source | Current candidate on the real desktop |
 | --- | --- | --- |
-| Calc | Custom grouped ribbon; audited Home/Insert/Formulas artwork; suite stylesheet | Pending |
-| Writer | Audited Home/Insert artwork; native Writer layout; suite stylesheet | Pending |
-| Impress | Audited Home/Insert artwork; native Impress layout; suite stylesheet | Pending |
-| Draw | Shared native header; upstream module controls/artwork; suite stylesheet | Pending |
-| Base | Shared native header; upstream module controls/artwork; suite stylesheet | Pending |
-| Math | Shared native header; upstream module controls/artwork; suite stylesheet | Pending |
-| Office start center | Direct suite launcher and desktop entry; suite stylesheet | Pending |
+| Calc | Custom grouped ribbon; audited Home/Insert/Formulas artwork; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
+| Writer | Audited Home/Insert artwork; native Writer layout; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
+| Impress | Audited Home/Insert artwork; native Impress layout; suite stylesheet | 1.1.0 inside a running suite; capture checked; not yet accepted |
+| Draw | Shared native header; upstream module controls/artwork; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
+| Base | Shared native header; upstream module controls/artwork; suite stylesheet | 1.1.0 inside a running suite; capture checked; not yet accepted |
+| Math | Shared native header; upstream module controls/artwork; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
+| Office start center | Direct suite launcher and desktop entry; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
+
+The last column records one check of the 1.1.0 candidate on 2026-11-23. Each
+module was opened on the real desktop at 3840 x 2160, its window was captured
+and compared with the lab capture, and it was closed again. Impress and Base
+were opened with fictional documents inside a suite started from another menu
+entry, because their own entries first ask for a template or start a wizard.
+Menus, dialogs, prompts and editing were checked in the lab only. Acceptance by
+the owner is still open.
 
 The [artwork receipt](command-artwork.md) records exact source command coverage.
 Unmatched command icons still come from the official Sifr theme. All-tabs icon
