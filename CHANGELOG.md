@@ -1,5 +1,21 @@
 # Changelog
 
+## 1.2.0 — Grouped Home tabs in Writer, Impress and Draw
+
+- Writer, Impress and Draw open with the Home tab grouped like Calc's: a large
+  Paste with icon-only Cut, Copy and Clone, rules between groups, and Find &
+  Select at the right. Each fits a 1440 px window without the overflow chevron.
+  Impress gains a New Slide button. Commands that left Home stay on their own
+  tabs and in the menus: Writer's Insert group, text shadow and character
+  spacing, text direction, vertical text, and the slide show buttons (the small
+  button above Find & Select still starts the show).
+- Each layout is built from the pinned official one. A profile that has its own
+  ribbon for a module keeps it, and an engine update that changes the official
+  layout brings LibreOffice's own ribbon back for that module.
+- Writer's style gallery shows a style name on two lines in full.
+- A command that only reports a state no longer shows an empty check box in
+  menus, and side panel title bars keep their height.
+
 ## 1.1.0 — One look across the suite
 
 - A suite stylesheet carries the approved Calc design study to every module on

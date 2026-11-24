@@ -161,6 +161,28 @@ def refresh_ribbon(root, profile, env, record, staging):
     return {"ribbon_sha256": sha256(contents).hexdigest()}
 
 
+def module_ribbons(profile, record):
+    """Writer, Impress and Draw get the grouped Home tab unless the profile has its own layout."""
+    written = dict(record.get("ribbons", {}))
+    for module in calc_ribbon.MODULES:
+        target = profile / calc_ribbon.RIBBON.replace("scalc", module)
+        ours = written.pop(module, None)
+        if target.is_symlink() or (target.exists() and (
+                not target.is_file() or sha256(target.read_bytes()).hexdigest() != ours)):
+            continue
+        contents = calc_ribbon.module_ribbon(module)
+        if contents is None:
+            # An engine update changed the official layout: its own ribbon returns.
+            target.unlink(missing_ok=True)
+            continue
+        target.parent.mkdir(parents=True, exist_ok=True)
+        candidate = target.with_name("notebookbar.new")
+        candidate.write_bytes(contents)
+        candidate.replace(target)
+        written[module] = sha256(contents).hexdigest()
+    return {"ribbons": written}
+
+
 def refresh_presentation(root, profile, env, record):
     # Never invoke unopkg or a setup/headless Office against a live profile.
     if profile_live(root, profile):
@@ -196,7 +218,8 @@ def refresh_presentation(root, profile, env, record):
             quiet_shortcuts(profile)
             marker.write_text(json.dumps({**record, "presentation_revision": revision,
                                          "presentation_package_sha256": current,
-                                         **refresh_ribbon(root, profile, env, record, staging)}) + "\n")
+                                         **refresh_ribbon(root, profile, env, record, staging),
+                                         **module_ribbons(profile, record)}) + "\n")
             marker.replace(root / "profile-ready.json")
         except Exception as error:
             try:
@@ -262,7 +285,8 @@ def initialize(root, env):
                                 "presentation_revision": revision,
                                 "presentation_package_sha256": owned_package(package),
                                 **({"ribbon_sha256": sha256(ribbon.read_bytes()).hexdigest()}
-                                   if ribbon.is_file() else {})}) + "\n")
+                                   if ribbon.is_file() else {}),
+                                **module_ribbons(profile, {})}) + "\n")
     return profile
 
 

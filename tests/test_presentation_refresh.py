@@ -9,6 +9,7 @@ import sys
 import tempfile
 from types import SimpleNamespace
 import unittest
+import xml.etree.ElementTree as ET
 from unittest.mock import patch
 from zipfile import ZipFile, ZipInfo
 
@@ -136,6 +137,52 @@ class PresentationRefreshTests(unittest.TestCase):
             self.assertEqual(record["ribbon_sha256"], hashlib.sha256(b"current ribbon").hexdigest())
             self.assertEqual(custom.read_text(), "customised by the user")
             self.assertEqual((modules / "simpress/toolbar/notebookbarshortcuts.xml").read_text(), launch.EMPTY_TOOLBAR)
+
+    def test_module_ribbons_follow_the_runtime_until_the_user_changes_one(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            launch, _root, profile, _retained, _installed, _install = fixture(Path(temporary))
+            paths = {module: profile / "user/config/soffice.cfg/modules" / module / "ui/notebookbar.ui"
+                     for module in launch.calc_ribbon.MODULES}
+            paths["sdraw"].parent.mkdir(parents=True)
+            paths["sdraw"].write_text("customised by the user")
+            with patch.object(launch.calc_ribbon, "module_ribbon", side_effect=lambda module: module.encode()):
+                record = launch.module_ribbons(profile, {})
+            self.assertEqual(set(record["ribbons"]), {"swriter", "simpress"})
+            self.assertEqual(paths["swriter"].read_bytes(), b"swriter")
+            self.assertEqual(paths["sdraw"].read_text(), "customised by the user")
+            paths["simpress"].write_text("edited later")
+            with patch.object(launch.calc_ribbon, "module_ribbon", return_value=b"next"):
+                record = launch.module_ribbons(profile, record)
+            self.assertEqual(paths["swriter"].read_bytes(), b"next")
+            self.assertEqual(paths["simpress"].read_text(), "edited later")
+            self.assertEqual(set(record["ribbons"]), {"swriter"})
+            # An unknown official layout gets its own ribbon back.
+            with patch.object(launch.calc_ribbon, "module_ribbon", return_value=None):
+                record = launch.module_ribbons(profile, record)
+            self.assertFalse(paths["swriter"].exists())
+            self.assertEqual(record["ribbons"], {})
+            self.assertEqual(paths["simpress"].read_text(), "edited later")
+
+    def test_module_home_tabs_keep_the_planned_groups_and_commands(self):
+        ribbon = load("module_ribbon", ROOT / "norvi-office/experiments/native-header/calc_ribbon.py")
+        for module, spec in ribbon.MODULES.items():
+            contents = ribbon.module_ribbon(module)
+            if contents is None:
+                self.skipTest("The pinned official layouts are not installed here")
+            with self.subTest(module=module):
+                tree = ET.fromstring(contents)
+                page = tree.find(".//object[@id='Home Tab']")
+                home = page.find(".//object[@id='Home']")
+                self.assertEqual([child.find("object").get("id") for child in home.findall("child")],
+                                 ["Home-Section-" + name for name in spec["sections"]])
+                identifiers = {item.get("id") for item in page.iter("object")}
+                self.assertFalse(identifiers.intersection(spec["drop"]))
+                self.assertEqual({item.get("id") for item in home.iter("object") if item.get("class") == "GtkSeparator"},
+                                 {"NorviRule" + name for name in spec["rules"]})
+                self.assertIn("Home-HomeButton:Norvi Find and Select", identifiers)
+                self.assertFalse({item.get("name") for item in tree.iter("widget")}
+                                 - {item.get("id") for item in tree.iter("object")})
+                self.assertEqual(len(tree.findall("object[@id='Norvi Find and Select']/child")), len(spec["find"]))
 
     def test_live_exact_profile_defers_without_touching_package_or_marker(self):
         with tempfile.TemporaryDirectory() as temporary:

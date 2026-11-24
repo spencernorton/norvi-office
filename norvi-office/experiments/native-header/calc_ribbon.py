@@ -304,16 +304,15 @@ def set_menu_image(tree, button, identifier, icon):
         ET.SubElement(button, "property", name=name).text = value
 
 
-def build_find_menu(tree):
+FIND = (("Find", "vnd.sun.star.findbar:FocusToFindbar"), ("Replace", ".uno:SearchDialog"),
+        ("SelectAll", ".uno:SelectAll"))
+
+
+def build_find_menu(tree, items=(*FIND, ("SelectRow", ".uno:SelectRow"), ("SelectColumn", ".uno:SelectColumn"),
+                                 ("SelectData", ".uno:SelectData")), first=".uno:AutoSum"):
+    """Replace the Home menu button. `first` is the command the stock search button takes over."""
     menu = widget("GtkMenu", "Norvi Find and Select")
-    for command, url in (
-        ("Find", "vnd.sun.star.findbar:FocusToFindbar"),
-        ("Replace", ".uno:SearchDialog"),
-        ("SelectAll", ".uno:SelectAll"),
-        ("SelectRow", ".uno:SelectRow"),
-        ("SelectColumn", ".uno:SelectColumn"),
-        ("SelectData", ".uno:SelectData"),
-    ):
+    for command, url in items:
         pack(menu, widget("GtkMenuItem", "NorviFind" + command, action_name=url))
     tree.getroot().insert(0, menu)
 
@@ -328,10 +327,55 @@ def build_find_menu(tree):
     dropdown.find("packing/property[@name='position']").text = "1"
     tools.find("packing/property[@name='position']").text = "0"
     toolbar = tools.find("object")
-    old_find = toolbar.find("child/object[@id='Home-SearchDialog']/property[@name='action_name']")
-    old_find.text = ".uno:AutoSum"
+    if first:
+        old_find = toolbar.find("child/object[@id='Home-SearchDialog']/property[@name='action_name']")
+        old_find.text = first
     box.remove(dropdown)
     box.append(dropdown)
+
+
+def set_node_property(item, key, value):
+    # The stock Writer layout spells property names with hyphens.
+    prop = next((prop for prop in item.findall("property") if prop.get("name").replace("-", "_") == key), None)
+    if prop is None:
+        prop = ET.Element("property", name=key)
+        item.insert(0, prop)
+    prop.text = value
+
+
+def move_node(nodes, identifier, source, destination):
+    child = next(child for child in nodes[source].findall("child")
+                 if child.find("object").get("id") == identifier)
+    nodes[source].remove(child)
+    nodes[destination].append(child)
+
+
+def add_rules(nodes, names, make):
+    """One rule per group. Rules are VCL children of their groups, so they move with overflow."""
+    for name in names:
+        group = nodes["Home-Section-" + name]
+        child = ET.Element("child")
+        child.append(make("NorviRule" + name))
+        packing = ET.SubElement(child, "packing")
+        ET.SubElement(packing, "property", name="position").text = "0"
+        for sibling in group.findall("child"):
+            position = sibling.find("packing/property[@name='position']")
+            if position is not None:
+                position.text = str(int(position.text) + 1)
+        group.insert(len(group.findall("property")), child)
+
+
+def styled_rule(identifier):
+    return widget("GtkSeparator", identifier, orientation="vertical",
+                  margin_start="24", margin_end="12", margin_top="3", margin_bottom="3")
+
+
+def pad_home(home):
+    # Every tab takes the tallest page's height, so this pads them all.
+    for key in ("margin_top", "margin_bottom"):
+        margin = ET.Element("property", name=key)
+        margin.text = "8"
+        home.insert(0, margin)
 
 
 def build_home(tree, dark=False, styled=False):
@@ -339,18 +383,10 @@ def build_home(tree, dark=False, styled=False):
     nodes = {item.get("id"): item for item in home.iter("object")}
 
     def set_property(identifier, key, value):
-        item = nodes[identifier]
-        prop = item.find(f"property[@name='{key}']")
-        if prop is None:
-            prop = ET.Element("property", name=key)
-            item.insert(0, prop)
-        prop.text = value
+        set_node_property(nodes[identifier], key, value)
 
     def move(identifier, source, destination):
-        child = next(child for child in nodes[source].findall("child")
-                     if child.find("object").get("id") == identifier)
-        nodes[source].remove(child)
-        nodes[destination].append(child)
+        move_node(nodes, identifier, source, destination)
 
     # Preserve VCL's stock container identities and real command bindings.
     move("Home-FormatPaintbrush", "LineA7", "LineB7")
@@ -384,37 +420,20 @@ def build_home(tree, dark=False, styled=False):
     for name, priority in (("Style2", 6), ("Cell1", 5), ("Find", 4), ("Find1", 3)):
         nodes["Home-Section-" + name].find("style/class").set("name", f"priority-{priority}")
 
-    # One rule per study group. Rules are VCL children of their groups, so they
-    # move with overflow.
-    def add_rules(make):
-        for name in ("Format", "Align", "Number", "Condition", "Cell1"):
-            group = nodes["Home-Section-" + name]
-            child = ET.Element("child")
-            child.append(make("NorviRule" + name))
-            packing = ET.SubElement(child, "packing")
-            ET.SubElement(packing, "property", name="position").text = "0"
-            for sibling in group.findall("child"):
-                position = sibling.find("packing/property[@name='position']")
-                if position is not None:
-                    position.text = str(int(position.text) + 1)
-            group.insert(len(group.findall("property")), child)
-
+    # One rule per study group.
+    groups = ("Format", "Align", "Number", "Condition", "Cell1")
     if styled:
         # The desktop stylesheet draws separators, so use real ones and hide
         # the stock separators inside groups.
         for item in home.iter("object"):
             if item.get("class") == "GtkSeparator":
                 set_property(item.get("id"), "visible", "False")
-        add_rules(lambda identifier: widget("GtkSeparator", identifier, orientation="vertical",
-                                            margin_start="24", margin_end="12", margin_top="3", margin_bottom="3"))
-        # Every tab takes the tallest page's height, so this pads them all.
-        for key in ("margin_top", "margin_bottom"):
-            margin = ET.Element("property", name=key)
-            margin.text = "8"
-            home.insert(0, margin)
+        add_rules(nodes, groups, styled_rule)
+        pad_home(home)
     elif dark:
-        add_rules(lambda identifier: widget("GtkImage", identifier, pixbuf="cmd/norvi_ribbon_rule.png",
-                                            margin_start="6", margin_end="8", valign="center"))
+        add_rules(nodes, groups, lambda identifier: widget(
+            "GtkImage", identifier, pixbuf="cmd/norvi_ribbon_rule.png",
+            margin_start="6", margin_end="8", valign="center"))
         for identifier in ("separator102", "separator30", "separator1"):
             set_property(identifier, "visible", "False")
 
@@ -446,6 +465,132 @@ def ribbon(environment, native=False):
     extension_label.attrib = {"name": "label"}
     extension_label.text = "E~xtensions"
     build_find_menu(tree)
+    output = BytesIO()
+    tree.write(output, encoding="utf-8", xml_declaration=True)
+    return output.getvalue()
+
+
+def add_new_slide(nodes, home):
+    section = widget("VclOptionalBox", "Home-Section-NorviSlides", valign="center", vexpand="True")
+    tools = widget("sfxlo-NotebookbarToolBox", "NorviSlides", toolbar_style="both", show_arrow="False",
+                   icon_size="3", can_focus="True", valign="center", vexpand="True")
+    pack(tools, widget("GtkToolButton", "NorviHomeNewSlide", action_name=".uno:InsertSlide"))
+    child = ET.SubElement(section, "child")
+    child.append(tools)
+    # Without a position the rule would follow the button.
+    ET.SubElement(ET.SubElement(child, "packing"), "property", name="position").text = "0"
+    pack(home, section)
+    nodes[section.get("id")] = section
+
+
+# Home tabs of the other tabbed modules: the same grouping as Calc, built from
+# each pinned official layout. A dropped command keeps its place on its own tab
+# and in the menus. "sections" is the kept groups in order; "top" binds the
+# small buttons above Find & Select. Each fits a 1440 px window without overflow.
+CLIPBOARD = (("LineA6", "toolbar_style", "icons"), ("LineB7", "toolbar_style", "icons"),
+             ("SectionBottom10", "toolbar_style", "icons"))
+MODULES = {
+    "swriter": {
+        "hash": "b5d3949bd1239874e1d0c0049b1c1d5075e215db2217ebf6234af50980394d2f",
+        "move": (("Home-FormatPaintbrush", "LineA7", "LineB7"), ("Home-ResetAttributes", "LineB8", "ExtTop6"),
+                 ("Home-IncrementIndent1", "SectionBottom81", "SectionBottom91"),
+                 ("Home-DecrementIndent1", "SectionBottom81", "SectionBottom91"),
+                 ("Home-LineSpacing1", "SectionBottom125", "SectionBottom13"),
+                 ("Home-BackgroundColor1", "SectionBottom125", "SectionBottom13"),
+                 ("Home-ControlCodes1", "SectionBottom130", "SectionBottom13"),
+                 ("Home-InsertAnnotation", "LineB35", "SectionBottom10"),
+                 ("Home-PrintPreview", "LineB35", "SectionBottom10"),
+                 ("Home-Navigator", "LineB35", "SectionBottom10")),
+        "drop": ("Home-Shadowed", "Home-Spacing", "Home-FocusToFindbar"),
+        "sections": ("Clipboard", "Format", "Paragraph", "Style3"),
+        "rules": ("Format", "Paragraph", "Style3"),
+        "find": (*FIND, ("GotoPage", ".uno:GotoPage")),
+    },
+    "simpress": {
+        "hash": "d00d7b6e8ff0d35feb0271266331bf8f28a85ee6bb4290a221036647a4e00b6d",
+        "extra": add_new_slide,
+        "move": (("Home-FormatPaintbrush", "LineA7", "LineB7"), ("Home-SetDefault", "LineB8", "ExtTop6")),
+        "drop": ("Home-Shadowed", "Home-Spacing", "Home-ParaLeftToRight", "Home-ParaRightToLeft",
+                 "Home-VerticalText"),
+        "sections": ("Clipboard", "NorviSlides", "Format", "Paragraph", "Paragraph2", "Paragraph3",
+                     "DrawSection", "DrawSection1", "DrawSection2"),
+        "rules": ("NorviSlides", "Format", "Paragraph", "DrawSection"),
+        # The official layout already starts the show from the second small button.
+        "top": (("Home-SearchDialog", ".uno:Navigator"),),
+        "find": FIND,
+    },
+    "sdraw": {
+        "hash": "8952c4df2b5755c94991a5854c4adc05626cf5833a7e258db20797a0bb1690a3",
+        "move": (("Home-FormatPaintbrush", "LineA7", "LineB7"), ("Home-SetDefault", "LineB8", "LineA6")),
+        "drop": ("Home-VerticalText",),
+        "sections": ("Clipboard", "DrawColor", "DrawColor1", "DrawColor2", "DrawText", "Draw", "Draw2",
+                     "Draw1", "Arrange", "Transform", "Arrange1", "Arrange2"),
+        "rules": ("DrawColor", "DrawText", "Arrange"),
+        # Snapping toggles give way first in a narrow window.
+        "priority": (("Transform", 4), ("Arrange1", 2), ("Arrange2", 1)),
+        "set": (("LineA34", "toolbar_style", "icons"),),
+        "top": (("Home-Findbar", ".uno:Navigator"),),
+        "find": FIND,
+    },
+}
+
+
+def build_module_home(tree, spec):
+    page = tree.find(".//object[@id='Home Tab']")
+    home = page.find(".//object[@id='Home']")
+    nodes = {item.get("id"): item for item in page.iter("object")}
+    if "extra" in spec:
+        spec["extra"](nodes, home)
+    for identifier, source, destination in spec["move"]:
+        move_node(nodes, identifier, source, destination)
+    for identifier, key, value in (*CLIPBOARD, *spec.get("set", ())):
+        set_node_property(nodes[identifier], key, value)
+    for identifier, url in spec.get("top", ()):
+        set_node_property(nodes[identifier], "action_name", url)
+    for name, priority in spec.get("priority", ()):
+        nodes["Home-Section-" + name].find("style/class").set("name", f"priority-{priority}")
+    # Removed, not hidden: overflow shows a group's children again when the window grows.
+    owner = {child: parent for parent in page.iter() for child in parent}
+    stock_rules = [item for item in home.iter("object") if item.get("class") == "GtkSeparator"]
+    for item in [nodes[identifier] for identifier in spec["drop"]] + stock_rules:
+        owner[owner[item]].remove(owner[item])
+    sections = {item.find("object").get("id").removeprefix("Home-Section-"): item
+                for item in home.findall("child")}
+    for item in sections.values():
+        home.remove(item)
+    for index, name in enumerate(spec["sections"]):
+        item = sections[name]
+        position = item.find("packing/property[@name='position']")
+        if position is None:
+            position = ET.SubElement(ET.SubElement(item, "packing"), "property", name="position")
+        position.text = str(index)
+        home.append(item)
+    # A size group naming a widget that is gone stops the application.
+    remaining = {item.get("id") for item in tree.iter("object")}
+    for group in tree.iter("widgets"):
+        for item in [item for item in group if item.get("name") not in remaining]:
+            group.remove(item)
+    add_rules(nodes, spec["rules"], styled_rule)
+    set_node_property(nodes["Home-Section-Clipboard"], "margin_start", "18")
+    pad_home(home)
+
+
+def module_ribbon(module):
+    """A grouped Home tab for Writer, Impress or Draw; None when the installed layout is not the pinned one."""
+    spec = MODULES[module]
+    try:
+        source = (SOURCE.parents[2] / module / "ui/notebookbar.ui").read_bytes()
+    except OSError:
+        return None
+    if sha256(source).hexdigest() != spec["hash"]:
+        return None
+    tree = ET.ElementTree(ET.fromstring(source, parser=ET.XMLParser(
+        target=ET.TreeBuilder(insert_comments=True))))
+    build_module_home(tree, spec)
+    extension_label = tree.find(".//object[@id='ExtensionLabel']/property[@name='label']")
+    extension_label.attrib = {"name": "label"}
+    extension_label.text = "E~xtensions"
+    build_find_menu(tree, spec["find"], first=None)
     output = BytesIO()
     tree.write(output, encoding="utf-8", xml_declaration=True)
     return output.getvalue()

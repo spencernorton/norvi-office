@@ -25,9 +25,9 @@ headless initialization and disposable qualification processes.
 | Application | Interface coverage in source | Current candidate on the real desktop |
 | --- | --- | --- |
 | Calc | Custom grouped ribbon; audited Home/Insert/Formulas artwork; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
-| Writer | Audited Home/Insert artwork; native Writer layout; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
-| Impress | Audited Home/Insert artwork; native Impress layout; suite stylesheet | 1.1.0 inside a running suite; capture checked; not yet accepted |
-| Draw | Shared native header; upstream module controls/artwork; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
+| Writer | Grouped Home tab; audited Home/Insert artwork; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
+| Impress | Grouped Home tab; audited Home/Insert artwork; suite stylesheet | 1.1.0 inside a running suite; capture checked; not yet accepted |
+| Draw | Grouped Home tab; shared native header; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
 | Base | Shared native header; upstream module controls/artwork; suite stylesheet | 1.1.0 inside a running suite; capture checked; not yet accepted |
 | Math | Shared native header; upstream module controls/artwork; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
 | Office start center | Direct suite launcher and desktop entry; suite stylesheet | 1.1.0 from its menu entry; capture checked; not yet accepted |
@@ -67,9 +67,9 @@ The unmodified engine fixes some details, so the study cannot be matched there:
 - Calc's row and column headers are the window colour plus a fixed lightening,
   and a selected header takes the cell-focus colour;
 - the formula bar keeps its function, sum and accept buttons;
-- Writer, Impress and Draw keep LibreOffice's own tabbed layouts, which collapse
-  behind a chevron when a tab does not fit the window; Writer's style tiles cut
-  a two-line style name at the ribbon edge;
+- only the Home tab of Writer, Impress and Draw is regrouped; their other tabs
+  keep LibreOffice's own layouts, which collapse behind a chevron when a tab
+  does not fit the window;
 - drop-down lists of ribbon fields, the Borders palette and Impress's layout
   thumbnails are drawn by the engine with square corners and stock artwork;
 - Base draws its section titles black on a dark desktop, so their band stays
