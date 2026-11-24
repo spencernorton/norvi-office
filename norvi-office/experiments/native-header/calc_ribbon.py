@@ -11,6 +11,15 @@ SOURCE = Path("/usr/lib/libreoffice/share/config/soffice.cfg/modules/scalc/ui/no
 SOURCE_HASH = "95663027bb4325d46522b19259fe47fc85b837b6f92558f6568942b58d535804"
 SYSTEM_ICONS = Path("/usr/share/libreoffice/share/config/images_sifr_dark_svg.zip")
 SHORTCUTS = "private:resource/toolbar/notebookbarshortcuts"
+RIBBON = "user/config/soffice.cfg/modules/scalc/ui/notebookbar.ui"
+# Calc ribbons written by earlier candidates (2026-11-11 desktop runtime, then
+# the dark and light output of the preceding source revision). A profile's
+# ribbon is replaced only while it still is one of these or the recorded one.
+RETIRED_RIBBONS = frozenset((
+    "10d4ee9a6f3a465f8ad0b5c03435947338528029ff2c8d9fdfdace417d5234c0",
+    "0f66d522777264666527258814a9b2e927b57462343e4c2141f26507d7577819",
+    "33f77a35dcd7d8b618ff247450921a5bf648dc8fd55b2a3e560b240cd7553491",
+))
 REGISTRY = "http://openoffice.org/2001/registry"
 
 LABEL_GROUPS = (
@@ -200,6 +209,7 @@ def preview_package(source, output, app="calc", icons_source=None, appearance="d
     theme = f"iconsets/images_{style}.zip"
     # The release deliberately does not vendor Sifr. Derive the disposable
     # theme from the official installed package, retaining its license files.
+    more = "#f2eff8" if appearance == "dark" else "#2e3436"
     with ZipFile(source) as base, ZipFile(icons_source or SYSTEM_ICONS) as icons:
         replacements = {}
         for prefix, size in (("sc_", 16), ("lc_", 24), ("32/", 32)):
@@ -215,6 +225,12 @@ def preview_package(source, output, app="calc", icons_source=None, appearance="d
         replacements["cmd/norvi_ribbon_rule.svg"] = (
             '<svg xmlns="http://www.w3.org/2000/svg" width="1" height="68">'
             '<path d="M.5 0v68" stroke="#81778e" stroke-opacity=".65"/></svg>'
+        )
+        # The tab row's stock options button becomes the study's quiet "more" glyph.
+        replacements["res/notebookbar.svg"] = (
+            '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">'
+            f'<path d="M5 12h.01M12 12h.01M19 12h.01" fill="none" stroke="{more}" stroke-width="2.6" '
+            'stroke-linecap="round"/></svg>'
         )
         # Sifr aliases some command names. The replacement files take their place.
         link_lines = icons.read("links.txt").decode().splitlines()
@@ -318,7 +334,7 @@ def build_find_menu(tree):
     box.append(dropdown)
 
 
-def build_home(tree, dark):
+def build_home(tree, dark=False, styled=False):
     home = tree.find(".//object[@id='Home']")
     nodes = {item.get("id"): item for item in home.iter("object")}
 
@@ -357,7 +373,7 @@ def build_home(tree, dark):
     for identifier in hide:
         set_property(identifier, "visible", "False")
     for identifier in ("Home-Section-Clipboard", "Home-Section-Find1"):
-        set_property(identifier, "margin_start", "10")
+        set_property(identifier, "margin_start", "18" if styled and identifier.endswith("Clipboard") else "10")
     set_property("Home-Section-Format", "margin_start", "8")
     set_property("Home-RowOperations", "label", "Rows")
     set_property("Home-ColumnOperations", "label", "Columns")
@@ -368,14 +384,13 @@ def build_home(tree, dark):
     for name, priority in (("Style2", 6), ("Cell1", 5), ("Find", 4), ("Find1", 3)):
         nodes["Home-Section-" + name].find("style/class").set("name", f"priority-{priority}")
 
-    if dark:
-        # Rules are VCL children of their groups, so they move with overflow.
+    # One rule per study group. Rules are VCL children of their groups, so they
+    # move with overflow.
+    def add_rules(make):
         for name in ("Format", "Align", "Number", "Condition", "Cell1"):
             group = nodes["Home-Section-" + name]
-            rule = widget("GtkImage", "NorviRule" + name, pixbuf="cmd/norvi_ribbon_rule.png",
-                          margin_start="6", margin_end="8", valign="center")
             child = ET.Element("child")
-            child.append(rule)
+            child.append(make("NorviRule" + name))
             packing = ET.SubElement(child, "packing")
             ET.SubElement(packing, "property", name="position").text = "0"
             for sibling in group.findall("child"):
@@ -383,6 +398,23 @@ def build_home(tree, dark):
                 if position is not None:
                     position.text = str(int(position.text) + 1)
             group.insert(len(group.findall("property")), child)
+
+    if styled:
+        # The desktop stylesheet draws separators, so use real ones and hide
+        # the stock separators inside groups.
+        for item in home.iter("object"):
+            if item.get("class") == "GtkSeparator":
+                set_property(item.get("id"), "visible", "False")
+        add_rules(lambda identifier: widget("GtkSeparator", identifier, orientation="vertical",
+                                            margin_start="24", margin_end="12", margin_top="3", margin_bottom="3"))
+        # Every tab takes the tallest page's height, so this pads them all.
+        for key in ("margin_top", "margin_bottom"):
+            margin = ET.Element("property", name=key)
+            margin.text = "8"
+            home.insert(0, margin)
+    elif dark:
+        add_rules(lambda identifier: widget("GtkImage", identifier, pixbuf="cmd/norvi_ribbon_rule.png",
+                                            margin_start="6", margin_end="8", valign="center"))
         for identifier in ("separator102", "separator30", "separator1"):
             set_property(identifier, "visible", "False")
 
@@ -401,6 +433,24 @@ def build_home(tree, dark):
         home.append(item)
 
 
+def ribbon(environment, native=False):
+    """The generated Calc ribbon, from the pinned official layout."""
+    source = SOURCE.read_bytes()
+    if sha256(source).hexdigest() != SOURCE_HASH:
+        raise ValueError("Unsupported Calc ribbon input")
+    tree = ET.ElementTree(ET.fromstring(source, parser=ET.XMLParser(
+        target=ET.TreeBuilder(insert_comments=True))))
+    build_home(tree, "dark" in environment.get("GTK_THEME", ""), styled=native)
+    add_formulas_tab(tree)
+    extension_label = tree.find(".//object[@id='ExtensionLabel']/property[@name='label']")
+    extension_label.attrib = {"name": "label"}
+    extension_label.text = "E~xtensions"
+    build_find_menu(tree)
+    output = BytesIO()
+    tree.write(output, encoding="utf-8", xml_declaration=True)
+    return output.getvalue()
+
+
 def prepare(profile, native=False, environment=None):
     from uno_utils import connect, prop, stop_office
 
@@ -409,21 +459,10 @@ def prepare(profile, native=False, environment=None):
     permitted = root.name.startswith("capture.") or (native and environment.get("NORVI_OFFICE_SESSION_DIR") == str(root))
     if profile.resolve() != root / "profile-calc" or not permitted:
         raise ValueError("The ribbon preview requires a fresh capture profile")
-    source = SOURCE.read_bytes()
-    if sha256(source).hexdigest() != SOURCE_HASH:
-        raise ValueError("Unsupported Calc ribbon input")
-    tree = ET.ElementTree(ET.fromstring(source, parser=ET.XMLParser(
-        target=ET.TreeBuilder(insert_comments=True))))
-    build_home(tree, "dark" in environment.get("GTK_THEME", ""))
-    add_formulas_tab(tree)
-    extension_label = tree.find(".//object[@id='ExtensionLabel']/property[@name='label']")
-    extension_label.attrib = {"name": "label"}
-    extension_label.text = "E~xtensions"
-    build_find_menu(tree)
-    destination = profile / "user/config/soffice.cfg/modules/scalc/ui/notebookbar.ui"
+    destination = profile / RIBBON
     destination.parent.mkdir(parents=True, exist_ok=True)
     with destination.open("xb") as output:
-        tree.write(output, encoding="utf-8", xml_declaration=True)
+        output.write(ribbon(environment, native))
 
     pipe = "norvi_ribbon_" + sha256(profile.as_uri().encode()).hexdigest()[:20]
     with Path("calc-ribbon-setup.log").open("w") as log:

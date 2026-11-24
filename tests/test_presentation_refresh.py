@@ -117,6 +117,26 @@ class PresentationRefreshTests(unittest.TestCase):
                 connect.assert_not_called()
             self.assertEqual({path: path.read_bytes() for path in retained}, before)
 
+    def test_closed_profile_gets_current_ribbon_and_quiet_shortcut_bars(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            launch, root, profile, retained, _installed, install = fixture(Path(temporary))
+            ribbon, modules = retained[0], profile / "user/config/soffice.cfg/modules"
+            custom = modules / "sdraw/toolbar/notebookbarshortcuts.xml"
+            custom.parent.mkdir(parents=True)
+            custom.write_text("customised by the user")
+            retired = hashlib.sha256(ribbon.read_bytes()).hexdigest()
+            with patch.object(launch, "profile_live", return_value=False), \
+                    patch.object(launch.subprocess, "run", side_effect=install), \
+                    patch.object(launch.calc_ribbon, "RETIRED_RIBBONS", {retired}), \
+                    patch.object(launch.calc_ribbon, "ribbon", return_value=b"current ribbon"):
+                launch.initialize(root, {})
+            self.assertEqual(ribbon.read_bytes(), b"current ribbon")
+            self.assertEqual((root / f"notebookbar.backup-{retired}.ui").read_bytes(), b"user work 0")
+            record = json.loads((root / "profile-ready.json").read_text())
+            self.assertEqual(record["ribbon_sha256"], hashlib.sha256(b"current ribbon").hexdigest())
+            self.assertEqual(custom.read_text(), "customised by the user")
+            self.assertEqual((modules / "simpress/toolbar/notebookbarshortcuts.xml").read_text(), launch.EMPTY_TOOLBAR)
+
     def test_live_exact_profile_defers_without_touching_package_or_marker(self):
         with tempfile.TemporaryDirectory() as temporary:
             launch, root, profile, _retained, _installed, _install = fixture(Path(temporary))

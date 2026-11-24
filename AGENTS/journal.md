@@ -1,5 +1,39 @@
 # Journal
 
+## 2026-11-23 — Carry the Calc study across the suite
+
+- Added the suite stylesheet `native-header/office.css`, loaded by the header
+  module above the theme for the suite's launch only. It styles the header, tab
+  row, ribbon card, fields, menus, dialogs, lists, side panels, scrollbars and
+  the Start Center in every module from the approved Calc study's values.
+- How the engine reads GTK styles, confirmed in captures: provider priority
+  beats specificity; the UI font must be one family name; controls the engine
+  paints itself carry no sibling position, so
+  `:not(:nth-child(odd)):not(:nth-child(even))` selects exactly those (ribbon
+  notebook, bare push buttons) and leaves dialog widgets alone; field and
+  highlight colours come from a bare `.view` path, normal and selected; a
+  selected ribbon tab carries both checked and selected state. Only two widget
+  names exist for CSS (`combobox`, `monoborder`); builder ids such as
+  `titleparent` are not names.
+- Registry defaults in the extension layer, all overridable by the user: Draw's
+  tabbed mode without the menu bar; the Drawing bar hidden in Impress and Draw
+  (LibreOffice hides it only when the ribbon is chosen by hand); one well colour
+  for pages, slides and the Start Center's recent documents; small icons for
+  classic toolbars. An extension default cannot override a window state the
+  profile already stores, so an existing profile keeps its Drawing bar until it
+  is hidden once from View > Toolbars. No headless migration was added.
+- The launcher writes an empty quick-access bar for Impress and Draw unless one
+  exists, and replaces the Calc ribbon of a closed profile only while the
+  installed ribbon is one this runtime wrote, keeping a backup.
+- Added a private visual lab: `scripts/visual_lab.sh` runs a scene in an
+  isolated headless GNOME session; `lab_tour.py --tabs` captures all seven
+  modules and every ribbon tab, `lab_states.py` menus, a dialog, the side panel
+  and a narrow window. The ribbon is absent from the accessibility tree, so the
+  tab sweep clicks the fixed 100 px tab grid until a click changes nothing.
+- Limits of the unmodified engine are recorded in
+  `docs/desktop-qualification.md`. Curated ribbons for Writer, Impress and Draw
+  remain future work; their stock tabbed layouts are styled but not rearranged.
+
 ## 2026-11-12 — Guard the owned menu button's popup lifecycle
 
 - Use a private GtkMenuButton subclass only for the injected titlebar menu.

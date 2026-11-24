@@ -24,19 +24,50 @@ headless initialization and disposable qualification processes.
 
 | Application | Interface coverage in source | Current candidate on the real desktop |
 | --- | --- | --- |
-| Calc | Custom grouped ribbon; audited Home/Insert/Formulas artwork | Pending |
-| Writer | Audited Home/Insert artwork; native Writer layout | Pending |
-| Impress | Audited Home/Insert artwork; native Impress layout | Pending |
-| Draw | Shared native header; upstream module controls/artwork | Pending |
-| Base | Shared native header; upstream module controls/artwork | Pending |
-| Math | Shared native header; upstream module controls/artwork | Pending |
-| Office start center | Direct suite launcher and desktop entry | Pending |
+| Calc | Custom grouped ribbon; audited Home/Insert/Formulas artwork; suite stylesheet | Pending |
+| Writer | Audited Home/Insert artwork; native Writer layout; suite stylesheet | Pending |
+| Impress | Audited Home/Insert artwork; native Impress layout; suite stylesheet | Pending |
+| Draw | Shared native header; upstream module controls/artwork; suite stylesheet | Pending |
+| Base | Shared native header; upstream module controls/artwork; suite stylesheet | Pending |
+| Math | Shared native header; upstream module controls/artwork; suite stylesheet | Pending |
+| Office start center | Direct suite launcher and desktop entry; suite stylesheet | Pending |
 
 The [artwork receipt](command-artwork.md) records exact source command coverage.
 Unmatched command icons still come from the official Sifr theme. All-tabs icon
 coverage and complete module-specific design parity remain outstanding.
 Optional document tools and data-model components remain separately scoped
 experiments; including them in source does not establish their desktop readiness.
+
+## Suite stylesheet
+
+`norvi-office/experiments/native-header/office.css` applies the approved Calc
+design study to every module. LibreOffice paints its controls through GTK style
+contexts, so one sheet reaches both the widgets GTK draws and the areas the
+engine paints itself. The header module loads it for the suite's launch only.
+
+`scripts/visual_lab.sh scripts/lab_tour.py --tabs` captures all seven modules
+and every ribbon tab in a private headless session at 1440 x 900, and
+`scripts/visual_lab.sh scripts/lab_states.py` captures menus, a dialog, the side
+panel, a save prompt and a narrow window. The lab uses its own profile, documents and session
+bus. Its captures show the styling; they are not evidence of the real desktop.
+
+The unmodified engine fixes some details, so the study cannot be matched there:
+
+- ribbon tabs are at least 100 px wide, so they sit further apart;
+- toolbar labels share one font weight, and toolbar drop-down arrows are filled
+  triangles;
+- Calc's row and column headers are the window colour plus a fixed lightening,
+  and a selected header takes the cell-focus colour;
+- the formula bar keeps its function, sum and accept buttons;
+- Writer, Impress and Draw keep LibreOffice's own tabbed layouts, which collapse
+  behind a chevron when a tab does not fit the window; Writer's style tiles cut
+  a two-line style name at the ribbon edge;
+- drop-down lists of ribbon fields, the Borders palette and Impress's layout
+  thumbnails are drawn by the engine with square corners and stock artwork;
+- Base draws its section titles black on a dark desktop, so their band stays
+  light enough to read them.
+- Calc's cell properties deck first opens narrower than its content, with or
+  without the stylesheet, until the side panel is dragged wider.
 
 ## Ribbon frame-ordering blocker
 

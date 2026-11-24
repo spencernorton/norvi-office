@@ -38,6 +38,9 @@ static const char *study_paths[] = {
     "M4 3h13l4 4v14H3V3h1m3 0v7h10V3M7 21v-7h10v7",
     "m8 4-5 5 5 5M3 9h11a6 6 0 0 1 0 12",
     "m16 4 5 5-5 5m5-5H10a6 6 0 0 0 0 12",
+    "M12 5.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13Zm0 4a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Z"
+    "M12 5.5v-3m0 16v3M5.5 12h-3m16 0h3M7.4 7.4 5.3 5.3m11.3 11.3 2.1 2.1M7.4 16.6l-2.1 2.1M16.6 7.4l2.1-2.1",
+    "M4 7h16M4 12h16M4 17h16",
 };
 
 static GtkWidget *study_icon(guint index) {
@@ -882,17 +885,21 @@ static void start_header_timer(Header *header, guint interval, GSourceFunc callb
     header->timer = timer->id;
 }
 
-static gboolean calc_caption(GBinding *binding, const GValue *source,
+/* "Name — LibreOffice Module" becomes the study's "Name · Module" caption. */
+static gboolean office_caption(GBinding *binding, const GValue *source,
         GValue *target, gpointer data) {
     (void)binding;
     (void)data;
     const gchar *title = g_value_get_string(source);
-    const gchar *suffix = " — LibreOffice Calc";
-    if (title && g_str_has_suffix(title, suffix)) {
-        gchar *escaped = g_markup_escape_text(title, strlen(title) - strlen(suffix));
-        g_value_take_string(target, g_strdup_printf("%s <span weight='normal' alpha='75%%'>· Calc</span>",
-            escaped));
-        g_free(escaped);
+    const gchar *mark = " — LibreOffice ";
+    const gchar *module = title ? g_strrstr(title, mark) : NULL;
+    if (module) {
+        gchar *name = g_markup_escape_text(title, module - title);
+        gchar *suffix = g_markup_escape_text(module + strlen(mark), -1);
+        g_value_take_string(target, g_strdup_printf("%s <span weight='normal' alpha='75%%'>· %s</span>",
+            name, suffix));
+        g_free(name);
+        g_free(suffix);
     } else {
         g_value_take_string(target, g_markup_escape_text(title ? title : "", -1));
     }
@@ -952,7 +959,7 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
     if (g_strcmp0(g_getenv("NORVI_OFFICE_CALC_RIBBON"), "1") == 0) {
         gtk_label_set_use_markup(GTK_LABEL(title), TRUE);
         g_object_bind_property_full(window, "title", title, "label", G_BINDING_SYNC_CREATE,
-            calc_caption, NULL, NULL, NULL);
+            office_caption, NULL, NULL, NULL);
     } else {
         g_object_bind_property(window, "title", title, "label", G_BINDING_SYNC_CREATE);
     }
@@ -980,7 +987,8 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
     disable_actions(header);
     header->menu = header_menu_new();
     gtk_menu_button_set_use_popover(GTK_MENU_BUTTON(header->menu), FALSE);
-    gtk_button_set_image(GTK_BUTTON(header->menu),
+    GtkWidget *menu_image = study ? study_icon(5) : NULL;
+    gtk_button_set_image(GTK_BUTTON(header->menu), menu_image ? menu_image :
         gtk_image_new_from_icon_name("open-menu-symbolic", GTK_ICON_SIZE_BUTTON));
     gtk_style_context_add_class(gtk_widget_get_style_context(header->menu), "flat");
     gtk_widget_set_tooltip_text(header->menu, "Main menu");
@@ -1118,6 +1126,16 @@ G_MODULE_EXPORT void gtk_module_init(gint *argc, gchar ***argv) {
     gtk_style_context_add_provider_for_screen(gdk_screen_get_default(), GTK_STYLE_PROVIDER(css),
         GTK_STYLE_PROVIDER_PRIORITY_USER + 1);
     g_object_unref(css);
+    /* The suite stylesheet restyles the native controls LibreOffice draws
+     * through GTK. It is launch-scoped: no theme or system file is replaced. */
+    const char *sheet = g_getenv("NORVI_OFFICE_STYLE");
+    if (sheet && g_file_test(sheet, G_FILE_TEST_IS_REGULAR)) {
+        GtkCssProvider *suite = gtk_css_provider_new();
+        if (gtk_css_provider_load_from_path(suite, sheet, NULL))
+            gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
+                GTK_STYLE_PROVIDER(suite), GTK_STYLE_PROVIDER_PRIORITY_USER + 2);
+        g_object_unref(suite);
+    }
     g_type_class_ref(GTK_TYPE_WIDGET);
     g_type_class_ref(GTK_TYPE_MENU_ITEM);
     g_signal_add_emission_hook(g_signal_lookup("event", GTK_TYPE_WIDGET), 0, chrome_input, NULL, NULL);

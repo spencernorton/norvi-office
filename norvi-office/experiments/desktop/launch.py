@@ -125,6 +125,42 @@ def profile_live(root, profile, proc=Path("/proc")):
     return False
 
 
+EMPTY_TOOLBAR = ('<?xml version="1.0" encoding="UTF-8"?>\n'
+                 '<!DOCTYPE toolbar:toolbar PUBLIC "-//OpenOffice.org//DTD OfficeDocument 1.0//EN" "toolbar.dtd">\n'
+                 '<toolbar:toolbar xmlns:toolbar="http://openoffice.org/2001/toolbar" '
+                 'xmlns:xlink="http://www.w3.org/1999/xlink"/>')
+
+
+def quiet_shortcuts(profile):
+    """The header owns open, save, undo and redo. A customised bar is left alone."""
+    for module in ("simpress", "sdraw"):
+        target = profile / "user/config/soffice.cfg/modules" / module / "toolbar/notebookbarshortcuts.xml"
+        target.parent.mkdir(parents=True, exist_ok=True)
+        try:
+            with target.open("x") as output:
+                output.write(EMPTY_TOOLBAR)
+        except FileExistsError:
+            pass
+
+
+def refresh_ribbon(root, profile, env, record, staging):
+    """Update the Calc ribbon only while it is one this runtime wrote, unedited."""
+    target = profile / calc_ribbon.RIBBON
+    if target.is_symlink() or not target.is_file():
+        return {}
+    current = sha256(target.read_bytes()).hexdigest()
+    if current not in calc_ribbon.RETIRED_RIBBONS | {record.get("ribbon_sha256")}:
+        return {}
+    contents = calc_ribbon.ribbon(env, native=True)
+    backup = root / ("notebookbar.backup-" + current + ".ui")
+    if not backup.exists():
+        backup.write_bytes(target.read_bytes())
+    candidate = staging / "notebookbar.ui"
+    candidate.write_bytes(contents)
+    candidate.replace(target)
+    return {"ribbon_sha256": sha256(contents).hexdigest()}
+
+
 def refresh_presentation(root, profile, env, record):
     # Never invoke unopkg or a setup/headless Office against a live profile.
     if profile_live(root, profile):
@@ -143,8 +179,6 @@ def refresh_presentation(root, profile, env, record):
         preview_package(SHARE / "extensions/NorviGlass.oxt", candidate)
         current = owned_package(candidate)
         marker = staging / "profile-ready.json"
-        marker.write_text(json.dumps({**record, "presentation_revision": revision,
-                                     "presentation_package_sha256": current}) + "\n")
         if profile_live(root, profile):
             return
         owned_package(package, previous)
@@ -159,6 +193,10 @@ def refresh_presentation(root, profile, env, record):
             owned_package(package, previous)
             candidate.replace(package)
             replaced = True
+            quiet_shortcuts(profile)
+            marker.write_text(json.dumps({**record, "presentation_revision": revision,
+                                         "presentation_package_sha256": current,
+                                         **refresh_ribbon(root, profile, env, record, staging)}) + "\n")
             marker.replace(root / "profile-ready.json")
         except Exception as error:
             try:
@@ -195,6 +233,7 @@ def initialize(root, env):
     preview_package(SHARE / "extensions/NorviGlass.oxt", package)
     subprocess.run(["unopkg", "add", "-env:UserInstallation=" + profile.as_uri(), str(package)], env=env, check=True)
     prepare(profile, native=True, environment=env)
+    quiet_shortcuts(profile)
     pipe = service_pipe(profile, "setup")
     with (root / "setup.log").open("w") as log:
         office = subprocess.Popen(["soffice", "-env:UserInstallation=" + profile.as_uri(), "--headless",
@@ -218,9 +257,12 @@ def initialize(root, env):
             context.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", context).terminate()
         finally:
             stop_office(office)
+    ribbon = profile / calc_ribbon.RIBBON
     ready.write_text(json.dumps({"separate_profile": str(profile), "schema": 1,
                                 "presentation_revision": revision,
-                                "presentation_package_sha256": owned_package(package)}) + "\n")
+                                "presentation_package_sha256": owned_package(package),
+                                **({"ribbon_sha256": sha256(ribbon.read_bytes()).hexdigest()}
+                                   if ribbon.is_file() else {})}) + "\n")
     return profile
 
 
@@ -306,6 +348,7 @@ def launch(app, files):
         env["NORVI_OFFICE_PROFILE_URI"] = profile.as_uri()
         env["NORVI_OFFICE_HEADER_BUS"] = service_bus(profile)
         env["GTK3_MODULES"] = str(HERE.parents[3] / "lib/x86_64-linux-gnu/norvi-office/libnorvi-office-header.so")
+        env["NORVI_OFFICE_STYLE"] = str(HEADER / "office.css")
         if running(root, profile):
             record = json.loads((root / "running.json").read_text())
             # A retained legacy runtime may have its older channel name. Verify
