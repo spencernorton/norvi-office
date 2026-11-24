@@ -1,5 +1,17 @@
 # Journal
 
+## 2026-11-24 — The restart check repeated on the final build; README aligned
+- The in-place restart was checked once more on the real desktop, with the
+  build that carries the fix in the entry below: Calc from its menu entry, the
+  suite restarted in place, the same helper process serving again with its
+  bus name owned, and the helper gone after the close.
+- README said a closed profile's update replaces only the extension package.
+  Since 1.1.0 it also replaces the ribbon layouts this runtime wrote, so the
+  sentence now says that. A layout the user changed, settings and documents
+  are kept, as before.
+- The scale-2 captures named in the qualification notes came from the lab
+  with a 2880 x 1800 monitor and a local scene, not committed, that sets the
+  monitor's scale through the compositor.
 ## 2026-11-24 — Review of the restart change: the helper leaves even when starting over fails
 
 - One independent review of the change below, against the engine's source
