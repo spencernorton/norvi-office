@@ -234,10 +234,10 @@ static void programmatic_menu_toggle_closes_popup(void) {
     GtkWidget *popup = fixture_popup(header);
     g_assert_true(header_menu_anchor_live((NorviHeaderMenuButton *)header->menu));
     /* GTK documents a nullable trigger event but warns for ATK/programmatic
-     * activation without one. This expected warning is not an invalid anchor. */
-    g_test_expect_message("Gtk", G_LOG_LEVEL_WARNING, "*no trigger event for menu popup*");
+     * activation without one. That warning is not an invalid anchor. GTK logs
+     * it as a structured message, which g_test_expect_message() cannot see,
+     * so it is left to print. */
     gtk_button_clicked(GTK_BUTTON(header->menu));
-    g_test_assert_expected_messages();
     g_assert_true(gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(header->menu)));
     g_assert_true(gtk_widget_get_visible(popup));
     gtk_button_clicked(GTK_BUTTON(header->menu));

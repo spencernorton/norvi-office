@@ -1,5 +1,19 @@
 # Journal
 
+## 2026-11-24 — The menu toggle case expected a message GLib cannot see
+- The first CI run of this branch failed in `test_lifecycle.c`. The
+  programmatic toggle case expected GTK's "no trigger event for menu popup"
+  warning through `g_test_expect_message()`, and the expectation was never
+  met although the warning was printed. GTK 3.24 logs it as a structured
+  message (a probe's log writer received it with its `CODE_FILE` field), and
+  GLib's expectations only see the old logging API. The case had not been
+  run on Linux before.
+- The expectation is gone and the warning is left to print; warnings are not
+  fatal in this binary. All ten lifecycle cases pass, so the menu button's
+  guards behave as the four new cases require, and `scripts/native_ci.sh`
+  runs to its end in a clean environment.
+- Lesson: `scripts/check.sh` does not run the native cases;
+  `scripts/native_ci.sh` does. Run the latter before proposing a branch.
 ## 2026-11-24 — The restart check repeated on the final build; README aligned
 - The in-place restart was checked once more on the real desktop, with the
   build that carries the fix in the entry below: Calc from its menu entry, the
