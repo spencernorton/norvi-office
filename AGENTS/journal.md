@@ -1,5 +1,29 @@
 # Journal
 
+## 2026-11-25 — The live accent change reaches LibreOffice's own painting
+- The private visual lab (`LAB_ACCENT=orange scripts/visual_lab.sh
+  scripts/lab_accent.py blue`) showed 1.4.0 changing only the header and its
+  glow while Calc stayed open; the selection, tab underline and ribbon
+  background stayed orange. LibreOffice 26.2 copies those colours and copies
+  them again on `style-updated` from its frame's event widget
+  (`vcl/unx/gtk3/gtkframe.cxx`, `getMouseEventWidget()`), and a provider
+  reload changes no property of that widget, so GTK never emits it.
+- Emitting `style-updated` on each toplevel alone was not enough (checked in
+  the lab); the header now emits it on every realized widget of every
+  toplevel after a reload. An independent review found the first version
+  emitted from inside `gtk_container_forall()`, where a handler that destroys
+  a parent frees the list the container is walking. The tree is now taken
+  first, with references, and destroyed (unrealized) widgets are skipped.
+- Lab, live orange to blue with Calc open: column header (240,93,0) to
+  (82,133,228), tab underline #f49d66 to (134,181,239), the derived blue tint
+  exactly, and the glow. The ribbon icons drawn in the accent follow at the
+  next start by design. One lab run stopped answering during Calc's start,
+  before any accent change (broker `Describe: TimeoutError`); the identical
+  rerun passed.
+- The lifecycle case asserts a shown child widget receives `style-updated`
+  (with the emission removed it fails, 0 >= 1) and that a handler destroying
+  its parent mid-restyle leaves no critical and skips the destroyed sibling.
+  `visual_lab.sh` takes `LAB_ACCENT`, default purple as before.
 ## 2026-11-25 — The suite follows the desktop accent; Base icon
 - Reported on the real desktop: changing the accent in Settings left the
   suite purple. Two causes, both by construction: `desktop/launch.py` set

@@ -62,7 +62,7 @@ gsettings set org.gnome.shell disable-user-extensions false
 gsettings set org.gnome.desktop.interface toolkit-accessibility true
 gsettings set org.gnome.desktop.interface gtk-theme "${LAB_THEME:-Yaru-purple-dark}"
 gsettings set org.gnome.desktop.interface color-scheme "${LAB_SCHEME:-prefer-dark}"
-gsettings set org.gnome.desktop.interface accent-color purple
+gsettings set org.gnome.desktop.interface accent-color "${LAB_ACCENT:-purple}"
 gsettings set org.gnome.desktop.interface enable-animations false
 gsettings set org.gnome.desktop.interface enable-hot-corners false
 gsettings set org.gnome.desktop.interface cursor-blink false

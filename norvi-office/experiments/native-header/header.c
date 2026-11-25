@@ -197,10 +197,40 @@ static void accent_load(GSettings *settings) {
     g_free(name);
 }
 
+/* GTK restyles its own widgets after a reload, but LibreOffice copies the
+ * colours it paints (selection, tabs, the ribbon's background) once, and copies
+ * them again only when the event widget inside a frame reports "style-updated"
+ * (vcl/unx/gtk3/gtkframe.cxx). A reload that changes none of that widget's own
+ * properties does not report it, so tell every widget; LibreOffice then
+ * re-reads its colours and repaints. */
+static void accent_collect(GtkWidget *widget, gpointer data) {
+    g_ptr_array_add(data, g_object_ref(widget));
+    if (GTK_IS_CONTAINER(widget))
+        gtk_container_forall(GTK_CONTAINER(widget), accent_collect, data);
+}
+
+static void accent_restyle(void) {
+    /* Take the whole tree first. A handler may destroy or move widgets, which
+     * must not happen while a container walks its own children. */
+    GPtrArray *widgets = g_ptr_array_new_with_free_func(g_object_unref);
+    GList *windows = gtk_window_list_toplevels();
+    for (GList *item = windows; item; item = item->next)
+        accent_collect(item->data, widgets);
+    g_list_free(windows);
+    for (guint index = 0; index < widgets->len; index++) {
+        GtkWidget *widget = g_ptr_array_index(widgets, index);
+        /* Skip what an earlier handler destroyed: destruction unrealizes. */
+        if (gtk_widget_get_realized(widget) && !gtk_widget_in_destruction(widget))
+            g_signal_emit_by_name(widget, "style-updated");
+    }
+    g_ptr_array_unref(widgets);
+}
+
 static void accent_changed(GSettings *settings, gchar *key, gpointer data) {
     (void)key;
     (void)data;
     accent_load(settings);
+    accent_restyle();
 }
 
 static void accent_install(GSettings *settings, const char *sheet) {

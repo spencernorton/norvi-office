@@ -336,16 +336,41 @@ static void menu_anchor_notification_closes_owner(void) {
     g_object_unref(window);
 }
 
-static void assert_background(GtkWidget *widget, const char *expected) {
-    while (g_main_context_iteration(NULL, FALSE)) {}
+static gchar *background(GtkWidget *widget) {
     GdkRGBA *color = NULL;
     gtk_style_context_get(gtk_widget_get_style_context(widget), GTK_STATE_FLAG_NORMAL,
                           "background-color", &color, NULL);
-    gchar *actual = g_strdup_printf("#%02x%02x%02x", (int)(color->red * 255 + .5),
-                                    (int)(color->green * 255 + .5), (int)(color->blue * 255 + .5));
+    gchar *text = g_strdup_printf("#%02x%02x%02x", (int)(color->red * 255 + .5),
+                                  (int)(color->green * 255 + .5), (int)(color->blue * 255 + .5));
+    gdk_rgba_free(color);
+    return text;
+}
+
+/* A shown widget restyles on the next frame, so allow a few. */
+static void assert_background(GtkWidget *widget, const char *expected) {
+    gchar *actual = NULL;
+    for (int attempt = 0; attempt < 100; attempt++) {
+        while (g_main_context_iteration(NULL, FALSE)) {}
+        g_free(actual);
+        actual = background(widget);
+        if (g_strcmp0(actual, expected) == 0)
+            break;
+        g_usleep(10000);
+    }
     g_assert_cmpstr(actual, ==, expected);
     g_free(actual);
-    gdk_rgba_free(color);
+}
+
+static void count_style_update(GtkWidget *widget, gpointer data) {
+    (void)widget;
+    (*(guint *)data)++;
+}
+
+static void destroy_parent_on_update(GtkWidget *widget, gpointer data) {
+    (void)data;
+    GtkWidget *parent = gtk_widget_get_parent(widget);
+    if (parent)
+        gtk_widget_destroy(parent);
 }
 
 /* The suite's accent follows the desktop setting at start and when it changes. */
@@ -369,13 +394,36 @@ static void accent_follows_desktop_setting(void) {
     GtkWidget *button = gtk_button_new_with_label("OK");
     gtk_style_context_add_class(gtk_widget_get_style_context(button), "default");
     gtk_container_add(GTK_CONTAINER(window), button);
+    /* Only realized widgets are told; destruction unrealizes. */
+    gtk_widget_show_all(window);
     assert_background(button, "#7456c3");
+    guint updates = 0;
+    /* LibreOffice listens on a widget inside the frame, not on the window. */
+    g_signal_connect(button, "style-updated", G_CALLBACK(count_style_update), &updates);
     accent_install(settings, sheet);
     assert_background(button, "#ed5b00");
+    updates = 0;
     g_assert_true(g_settings_set_string(settings, "accent-color", "blue"));
     assert_background(button, "#3584e4");
+    /* LibreOffice re-reads its painted colours only when that widget reports this. */
+    g_assert_cmpuint(updates, >=, 1);
+    /* A handler that destroys its parent while others wait must not leave
+     * a container walking freed children; the destroyed sibling is skipped. */
+    GtkWidget *other = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    GtkWidget *box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    GtkWidget *first = gtk_button_new(), *second = gtk_button_new();
+    gtk_container_add(GTK_CONTAINER(box), first);
+    gtk_container_add(GTK_CONTAINER(box), second);
+    gtk_container_add(GTK_CONTAINER(other), box);
+    gtk_widget_show_all(other);
+    g_signal_connect(first, "style-updated", G_CALLBACK(destroy_parent_on_update), NULL);
+    guint late = 0;
+    g_signal_connect(second, "style-updated", G_CALLBACK(count_style_update), &late);
     g_assert_true(g_settings_set_string(settings, "accent-color", "purple"));
     assert_background(button, "#7456c3");
+    g_assert_null(gtk_bin_get_child(GTK_BIN(other)));
+    g_assert_cmpuint(late, ==, 0);
+    gtk_widget_destroy(other);
     g_signal_handlers_disconnect_by_func(settings, accent_changed, NULL);
     gtk_style_context_remove_provider_for_screen(screen, GTK_STYLE_PROVIDER(accent_provider));
     gtk_style_context_remove_provider_for_screen(screen, GTK_STYLE_PROVIDER(suite));

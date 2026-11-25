@@ -1,5 +1,14 @@
 # Changelog
 
+## 1.4.1 — LibreOffice's own colours follow a live accent change
+
+- With the suite open, a new accent reached only what GTK draws: the header and
+  its glow. The selection, the active tab's underline and the ribbon's
+  background kept the old accent, because LibreOffice copies those colours and
+  copies them again only when the widget inside its window reports a style
+  change. After loading a new accent the header now reports one on every
+  widget, and LibreOffice repaints in the new colour.
+
 ## 1.4.0 — The desktop accent colour, and a Base icon
 
 - The suite follows the accent colour chosen in Settings. It was always purple:
