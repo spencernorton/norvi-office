@@ -13,7 +13,8 @@ HEADER = ROOT / "norvi-office/experiments/native-header"
 # GNOME's accent colours, as libadwaita defines them.
 GNOME = {"blue": "#3584e4", "teal": "#2190a4", "green": "#3a944a", "yellow": "#c88800", "orange": "#ed5b00",
          "red": "#e62d42", "pink": "#d56199", "purple": "#9141ac", "slate": "#6f8396"}
-TOKENS = {"accent_deep", "accent", "accent_hover", "accent_glow", "accent_glow_dim", "accent_icon", "accent_icon_light"}
+TOKENS = {"accent_deep", "accent", "accent_hover", "accent_glow", "accent_glow_dim", "accent_icon",
+          "accent_icon_light", "accent_band"}
 
 
 def load(name, path):
@@ -34,7 +35,33 @@ def derived(base):
     colour, white, chrome = rgb(base), (255, 255, 255), (0x25, 0x24, 0x2d)
     return {"accent_deep": base, "accent": mix(colour, white, .4), "accent_hover": mix(colour, white, .1),
             "accent_glow": mix(colour, chrome, .15), "accent_glow_dim": mix(colour, chrome, .62),
-            "accent_icon": mix(colour, white, .5), "accent_icon_light": base}
+            "accent_icon": mix(colour, white, .5), "accent_icon_light": base, "accent_band": band(colour)}
+
+
+def contrast_with_black(value):
+    def channel(c):
+        c /= 255
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (int(value[i:i + 2], 16) for i in (1, 3, 5))
+    return (0.2126 * channel(r) + 0.7152 * channel(g) + 0.0722 * channel(b) + 0.05) / 0.05
+
+
+def band(colour):
+    """Base's section band: a muted accent tint at the approved band's contrast with black text."""
+    def mix(first, second, fraction):
+        return tuple(round(a * (1 - fraction) + b * fraction) for a, b in zip(first, second))
+
+    def hexa(value):
+        return "#%02x%02x%02x" % value
+
+    tint = mix(colour, (149, 149, 149), 0.82)
+    target = contrast_with_black("#8f8aa0")
+    steps = [i / 200 for i in range(101)]
+    options = [(abs(contrast_with_black(hexa(mix(tint, (255, 255, 255), f))) - target), f) for f in steps]
+    options += [(abs(contrast_with_black(hexa(mix(tint, (0, 0, 0), f))) - target), -f) for f in steps[1:]]
+    shift = min(options)[1]
+    return hexa(mix(tint, (255, 255, 255), shift) if shift >= 0 else mix(tint, (0, 0, 0), -shift))
 
 
 class AccentTests(unittest.TestCase):
@@ -55,6 +82,9 @@ class AccentTests(unittest.TestCase):
         defaults = dict(re.findall(r"@define-color (accent\w*) (#[0-9a-f]{6});", sheet))
         purple = self.accents.colours("purple")
         self.assertEqual(set(defaults), TOKENS - {"accent_icon", "accent_icon_light"})
+        # Base's black section titles stay readable in every accent.
+        for name in GNOME:
+            self.assertGreaterEqual(contrast_with_black(self.accents.colours(name)["accent_band"]), 6.0, name)
         self.assertEqual(defaults, {key: purple[key] for key in defaults})
         self.assertEqual((purple["accent_icon"], purple["accent_icon_light"]), ("#c1aaf3", "#7460d4"))
         rules = re.sub(r"@define-color[^\n]*\n", "", sheet)

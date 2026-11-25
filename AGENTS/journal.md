@@ -1,5 +1,15 @@
 # Journal
 
+## 2026-11-25 — Base's section bars follow the accent
+- `#monoborder` section bars in Base were a fixed `#8f8aa0`. They now use
+  `@accent_band` from the accent palette. The rule, kept in
+  `tests/test_accents.py`, is 18% accent over grey 149, then lightened or
+  darkened to the original bar's contrast with black (6.31:1), because
+  LibreOffice draws those titles black. It reproduces the lavender bar within
+  three blue steps; purple keeps the exact original. The test requires at
+  least 6:1 for every accent.
+- Lab, Base on 26.2.7: orange draws `#a18877`, blue `#818e9f`, the palette
+  values exactly; titles stay legible.
 ## 2026-11-25 — LibreOffice 26.2.7 qualified
 - Ubuntu's unattended upgrade moved LibreOffice from 26.2.6 to 26.2.7 at
   06:34 MST. Every launch then fell back to plain LibreOffice: `qualified()`

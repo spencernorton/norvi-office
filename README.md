@@ -65,8 +65,8 @@ preview applications, their runtimes and documents are preserved. Uninstalling
 the native integration restores those preceding shortcuts.
 
 The suite follows the desktop's accent colour (Settings → Appearance). Selection,
-the active tab, default buttons and the glow behind the header change as soon as
-the accent does. The matching dark GTK theme and the few ribbon icons drawn in
+the active tab, default buttons, Base's section bars and the glow behind the
+header change as soon as the accent does. The matching dark GTK theme and the few ribbon icons drawn in
 the accent follow at the next start of the suite. Purple is the original
 Norvi lavender, also used when the desktop has no accent setting.
 

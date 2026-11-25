@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.4.3 — Base's section bars follow the accent
+
+- Base's Database, Tasks and Forms bars were the design study's violet-grey in
+  every accent. They now take a muted tint of the desktop accent, kept as light
+  as the original bar so LibreOffice's black titles stay at the same contrast,
+  about 6.3:1. Purple keeps the original bar exactly.
+
 ## 1.4.2 — Qualified on LibreOffice 26.2.7
 
 - Ubuntu's LibreOffice security update to 26.2.7 turned the suite back into

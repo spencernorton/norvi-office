@@ -20,6 +20,7 @@
 @define-color accent_hover #8266d2;
 @define-color accent_glow #6b55a0;
 @define-color accent_glow_dim #454066;
+@define-color accent_band #8f8aa0;
 @define-color hairline rgba(255, 255, 255, 0.11);
 @define-color rule rgba(255, 255, 255, 0.14);
 @define-color field rgba(255, 255, 255, 0.05);
@@ -369,8 +370,8 @@ scrolledwindow#monoborder {
 }
 
 /* Base section titles. LibreOffice draws the title text black on a dark desktop,
- * so the band stays light enough to read it (about 6:1). */
-#monoborder > viewport > box > grid:first-child { background-color: #8f8aa0; }
+ * so the band stays light enough to read it (about 6:1) in every accent. */
+#monoborder > viewport > box > grid:first-child { background-color: @accent_band; }
 
 /* Flat buttons (Start Center, side panels) and links */
 button.flat, button.link {
