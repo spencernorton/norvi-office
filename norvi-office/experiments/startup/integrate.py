@@ -34,6 +34,12 @@ def module_icon(assets, module):
     return icon if icon.is_file() else assets / "office.png"
 
 
+def theme_icon(module):
+    """The packaged theme name of a module's icon, when the package installed its sizes."""
+    name = f"norvi-office-{module}"
+    return name if Path(f"/usr/share/icons/hicolor/64x64/apps/{name}.png").is_file() else None
+
+
 def verify_icons(assets):
     provenance = json.loads((assets / "provenance.json").read_text())
     if digest(assets / "office.png") != provenance["sha256"]:
@@ -41,6 +47,11 @@ def verify_icons(assets):
     for module, record in json.loads((assets / "apps/provenance.json").read_text()).items():
         if digest(assets / "apps" / f"{module}.png") != record["sha256"]:
             raise ValueError(f"The {module} icon does not match its provenance")
+        for size, expected in record.get("sizes", {}).items():
+            path = assets / "apps" / (f"{module}.png" if size == "512" else
+                                      f"hicolor/{size}x{size}/apps/norvi-office-{module}.png")
+            if digest(path) != expected:
+                raise ValueError(f"The {module} icon at {size} px does not match its provenance")
 
 
 def desktop(source, module, launcher, icon):
@@ -93,7 +104,8 @@ def install():
         target = applications / name
         source = target if target.exists() else Path("/usr/share/applications") / name
         if source.exists():
-            payloads[target] = (desktop(source.read_text(), module, launcher, module_icon(runtime / "assets", module)), 0o644)
+            icon = (packaged and theme_icon(module)) or module_icon(runtime / "assets", module)
+            payloads[target] = (desktop(source.read_text(), module, launcher, icon), 0o644)
     fallback = ('#!/bin/sh\nif [ -f ' + shlex.quote(str(runtime / "launch.py")) + ' ]; then\n'
                 + '  exec /usr/bin/python3 ' + shlex.quote(str(runtime / "launch.py")) + ' "$@"\nfi\n'
                 + '[ "${1:-}" = --desktop ] || exit 2\nshift\n'

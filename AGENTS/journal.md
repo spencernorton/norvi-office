@@ -1,5 +1,24 @@
 # Journal
 
+## 2026-11-25 — Sharp application icons: theme sizes instead of one large file
+- Reported: the application icons look blurry on the dock. The art is sharp
+  (edges about 1 px wide at 512 px). The cause was scaling: each launcher's
+  `Icon=` named the 512 px file, and the shell shrinks a file icon on every
+  draw. GdkPixbuf at 64 px measured 10.4 to 18.7 on a mean-gradient sharpness
+  score; a Lanczos render of the same master scored 18.3 to 32.8. Themed icons
+  (Helios, Penguin Mail) were unaffected because the theme gives an exact size.
+- Each icon now has the hicolor sizes 16 to 256 px under
+  `startup/assets/apps/hicolor/`, rendered once from the 1024 px master; 512
+  is the existing file. `provenance.json` records every size and
+  `verify_icons` checks them. The direct integration installs the sizes into
+  `$XDG_DATA_HOME/icons/hicolor` as managed files, writes
+  `Icon=norvi-office-<app>`, and runs `gtk-update-icon-cache` only when a user
+  cache already exists. The package installs them under `/usr/share/icons`,
+  and `qualify_package.sh` checks all 66.
+- On the real dock the open window had been an idle Office process with no
+  windows. The lab's window tracker confirms a Writer window is tracked to
+  `libreoffice-writer.desktop` through its `libreoffice-writer` class, so the
+  launcher's icon is the one the dock shows.
 ## 2026-11-25 — Base's section bars follow the accent
 - `#monoborder` section bars in Base were a fixed `#8f8aa0`. They now use
   `@accent_band` from the accent palette. The rule, kept in

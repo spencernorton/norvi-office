@@ -54,6 +54,29 @@ def module_icon(assets, app):
     return icon if icon.is_file() else assets / "office.png"
 
 
+THEME_SIZES = (16, 22, 24, 32, 48, 64, 96, 128, 192, 256, 512)
+
+
+def theme_icons(assets, app):
+    """An application's icon at every theme size, or nothing unless every size exists.
+
+    A launcher naming one large file makes the shell shrink it on every draw, which
+    blurs it at dock and menu sizes. Pre-rendered sizes in the icon theme are drawn
+    as they are.
+    """
+    sizes = {size: assets / "apps" / (f"{app}.png" if size == 512 else
+                                       f"hicolor/{size}x{size}/apps/norvi-office-{app}.png")
+             for size in THEME_SIZES}
+    return sizes if all(path.is_file() for path in sizes.values()) else {}
+
+
+def refresh_icons(data):
+    """Keep an existing user icon cache current; a stale cache hides new icons."""
+    theme = data / "icons/hicolor"
+    if (theme / "icon-theme.cache").is_file() and shutil.which("gtk-update-icon-cache"):
+        subprocess.run(["gtk-update-icon-cache", "-q", "-t", "-f", str(theme)], check=False)
+
+
 def locations():
     home = Path.home()
     data = Path(os.environ.get("XDG_DATA_HOME", home / ".local/share"))
@@ -122,6 +145,9 @@ def install(candidate, desktop_shortcuts=True):
         source = target if target.exists() else Path("/usr/share/applications") / target.name
         if not source.exists():
             continue
+        icons = theme_icons(assets, app)
+        for size, icon in icons.items():
+            payloads[data / "icons/hicolor" / f"{size}x{size}/apps" / f"norvi-office-{app}.png"] = (icon.read_bytes(), 0o644)
         lines = []
         main = False
         for line in source.read_text().splitlines():
@@ -130,7 +156,7 @@ def install(candidate, desktop_shortcuts=True):
             if main and line.startswith("Name="):
                 line = "Name=Office" + (" " + app.title() if app != "startcenter" else "")
             if main and line.startswith("Icon="):
-                line = "Icon=" + str(module_icon(assets, app))
+                line = "Icon=" + (f"norvi-office-{app}" if icons else str(module_icon(assets, app)))
             # Existing integrated commands already reference the owned wrapper;
             # fallback upstream actions are rewritten without losing URI fields.
             if line.startswith("Exec=") and "libreoffice" in line and "norvi-office" not in line:
@@ -207,6 +233,7 @@ def install(candidate, desktop_shortcuts=True):
         # GNOME 50, and its preceding shader could mask new client pixels.
         activation(False)
         subprocess.run(["update-desktop-database", str(data / "applications")], check=True)
+        refresh_icons(data)
     except Exception:
         for record in records:
             target = Path(record["path"])
@@ -218,6 +245,7 @@ def install(candidate, desktop_shortcuts=True):
                 target.unlink()
         activation(False)
         prune_empty(destination)
+        refresh_icons(data)
         shutil.rmtree(state)
         raise
     print("Installed direct Office desktop launchers. Experimental compositor effects remain disabled.")
@@ -253,6 +281,7 @@ def uninstall():
             target.unlink()
     prune_empty(data / "gnome-shell/extensions" / UUID)
     subprocess.run(["update-desktop-database", str(data / "applications")], check=True)
+    refresh_icons(data)
     shutil.rmtree(state)
     print("Restored previous Office launchers; retained both profiles and all documents. Open apps can be closed normally.")
 
