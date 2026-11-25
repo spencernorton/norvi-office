@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.4.2 — Qualified on LibreOffice 26.2.7
+
+- Ubuntu's LibreOffice security update to 26.2.7 turned the suite back into
+  plain LibreOffice, as designed for an engine it had not been checked on: the
+  launcher and the header each accepted 26.2.6 only. Both now also accept
+  26.2.7, from one list that a test keeps identical in the contract and the
+  header.
+- Checked on 26.2.7: the four official ribbon layouts the suite builds from
+  are byte-identical to 26.2.6's, and Calc, Writer, Impress, Draw, Base and
+  Math each open with the header, the grouped ribbon and the desktop accent,
+  with no GTK warnings.
+
 ## 1.4.1 — LibreOffice's own colours follow a live accent change
 
 - With the suite open, a new accent reached only what GTK draws: the header and

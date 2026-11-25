@@ -991,6 +991,17 @@ static gboolean office_caption(GBinding *binding, const GValue *source,
     return TRUE;
 }
 
+/* Engine versions the header is qualified on; compatibility.json lists the
+ * same ones. Any other engine keeps LibreOffice's own window. */
+static const char *const qualified_engines[] = {"26.2.6.3", "26.2.7.3"};
+
+static gboolean engine_qualified(const char *version) {
+    for (guint i = 0; i < G_N_ELEMENTS(qualified_engines); i++)
+        if (g_strcmp0(version, qualified_engines[i]) == 0)
+            return TRUE;
+    return FALSE;
+}
+
 static gboolean child_added(GSignalInvocationHint *hint, guint count,
         const GValue *values, gpointer data) {
     (void)hint;
@@ -1006,7 +1017,7 @@ static gboolean child_added(GSignalInvocationHint *hint, guint count,
             gtk_window_get_transient_for(GTK_WINDOW(window)) ||
             g_object_get_data(G_OBJECT(window), "norvi-header"))
         return TRUE;
-    if (g_strcmp0(g_object_get_data(G_OBJECT(window), "libo-version"), "26.2.6.3") != 0)
+    if (!engine_qualified(g_object_get_data(G_OBJECT(window), "libo-version")))
         return TRUE;
 
     Header *header = g_new0(Header, 1);

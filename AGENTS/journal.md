@@ -1,5 +1,23 @@
 # Journal
 
+## 2026-11-25 — LibreOffice 26.2.7 qualified
+- Ubuntu's unattended upgrade moved LibreOffice from 26.2.6 to 26.2.7 at
+  06:34 MST. Every launch then fell back to plain LibreOffice: `qualified()`
+  reads `compatibility.json`, and `header.c` had its own `libo-version` check
+  for 26.2.6 only. Eight lab runs timed out at the first Calc start until
+  the cause was found; the lab expects the native header.
+- The header's check is now `qualified_engines[]`, and `test_release.py`
+  requires it to list exactly the contract's versions.
+- Evidence on 26.2.7: the Calc, Writer, Impress and Draw `notebookbar.ui`
+  files match the pinned SHA-256s; a six-module lab tour under the orange
+  accent shows each module with the header, grouped Home ribbon and accent,
+  and zero GTK criticals in `office.log`. With the header gated off (version
+  not yet listed), the same engine logged 45 `atk_state_set_contains_state`
+  and 15 `g_object_unref` criticals from LibreOffice's own title bar path;
+  26.2.6 runs logged none. Not from this code, but note it if a future
+  engine is checked without the header.
+- Base's section bars are `#8f8aa0` from the design study's neutral palette,
+  not an accent, so they stay violet-grey under every accent.
 ## 2026-11-25 — The live accent change reaches LibreOffice's own painting
 - The private visual lab (`LAB_ACCENT=orange scripts/visual_lab.sh
   scripts/lab_accent.py blue`) showed 1.4.0 changing only the header and its

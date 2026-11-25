@@ -8,7 +8,7 @@ The package provides the approved Office icon, an icon for each of Writer, Calc,
 Impress, Draw, Base and Math, a line-only loading prompt, a configuration extension and
 dormant experimental native glass components.
 The source release includes the complete qualification harness. The glass adapter is qualified against
-LibreOffice 26.2.6.3 and GNOME 50 only and is not enabled by normal launches.
+LibreOffice 26.2.6.3 and 26.2.7.3 and GNOME 50 only and is not enabled by normal launches.
 
 ## Build and check
 

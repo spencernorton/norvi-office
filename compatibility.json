@@ -16,7 +16,8 @@
   "experimental_native_adapter": {
     "enabled_by_default": false,
     "libreoffice_versions": [
-      "26.2.6.3"
+      "26.2.6.3",
+      "26.2.7.3"
     ],
     "gnome_shell_versions": [
       "50"
