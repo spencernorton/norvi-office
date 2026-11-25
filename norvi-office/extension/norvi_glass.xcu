@@ -52,8 +52,44 @@
         </prop>
     </item>
 
+    <!-- The ribbon and the header menu carry every command, so Draw opens
+         without the classic menu bar, as the other ribbon modules do. -->
+    <item oor:path="/org.openoffice.Office.UI.ToolbarMode/Applications/['Draw']/Modes/['Tabbed']">
+        <prop oor:name="HasMenubar" oor:op="fuse">
+            <value>false</value>
+        </prop>
+    </item>
+
+    <!-- LibreOffice hides the Drawing bar only when the ribbon is chosen by
+         hand. Apply the same result when the ribbon is the preset layout. -->
+    <item oor:path="/org.openoffice.Office.UI.ImpressWindowState/UIElements/States/['private:resource/toolbar/toolbar']">
+        <prop oor:name="Visible" oor:op="fuse">
+            <value>false</value>
+        </prop>
+    </item>
+    <item oor:path="/org.openoffice.Office.UI.DrawWindowState/UIElements/States/['private:resource/toolbar/toolbar']">
+        <prop oor:name="Visible" oor:op="fuse">
+            <value>false</value>
+        </prop>
+    </item>
+
+    <!-- The Start Center's recent documents sit in the same well as pages
+         (#1c1b22) instead of LibreOffice's fixed mid grey. -->
+    <item oor:path="/org.openoffice.Office.Common/Help/StartCenter">
+        <prop oor:name="StartCenterThumbnailsBackgroundColor" oor:op="fuse"><value>1841954</value></prop>
+    </item>
+    <!-- Pages and slides sit in a well slightly deeper than the chrome
+         (#1c1b22). A colour the user picks under Application Colours wins. -->
+    <item oor:path="/org.openoffice.Office.UI/ColorScheme/ColorSchemes/['COLOR_SCHEME_LIBREOFFICE_AUTOMATIC']/AppBackground">
+        <prop oor:name="Color" oor:op="fuse">
+            <value>1841954</value>
+        </prop>
+    </item>
+
     <!-- Stock chrome polish: suppress first-run cruft on fresh profiles. -->
     <item oor:path="/org.openoffice.Office.Common/Misc">
+        <!-- Classic toolbars (Base, Math) use the ribbon's small icons. -->
+        <prop oor:name="SymbolSet" oor:op="fuse"><value>0</value></prop>
         <prop oor:name="ShowTipOfTheDay" oor:op="fuse">
             <value>false</value>
         </prop>

@@ -1,0 +1,9 @@
+/* GNOME's slate accent (#6f8396); the other colours are derived from it. */
+@define-color accent_deep #6f8396;
+@define-color accent #a9b5c0;
+@define-color accent_hover #7d8fa0;
+@define-color accent_glow #647586;
+@define-color accent_glow_dim #414855;
+@define-color accent_icon #b7c1ca;
+@define-color accent_icon_light #6f8396;
+@define-color accent_band #898d90;

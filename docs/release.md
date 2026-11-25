@@ -41,6 +41,12 @@ Until these gates are evidenced, normal package launches enable the approved
 startup/icon presentation only. No claim of stable glass support is made.
 Office promotions are review-required even when the package has no root scripts.
 
+The direct desktop qualification path has its own
+[module and evidence record](desktop-qualification.md). Its current source uses
+a titlebar-only transparency fallback while committed-buffer association is
+unresolved. Passing startup or static backdrop checks cannot promote that path
+to full ribbon glass.
+
 ## Deployment and rollback
 
 The archive imports public producer releases into candidate, then its existing

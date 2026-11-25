@@ -1,0 +1,408 @@
+/* Norvi Office suite stylesheet for the dark desktop.
+ *
+ * LibreOffice paints its controls through GTK style contexts, so one sheet
+ * reaches the header, ribbon, fields, bars and menus of every module. The
+ * header module loads it for this launch only; no theme or system file changes.
+ * Values come from the approved Calc design study. Document canvases stay
+ * opaque, and the glow is painted (no window translucency).
+ *
+ * Controls LibreOffice paints itself carry no sibling position, so
+ * :not(:nth-child(odd)):not(:nth-child(even)) selects exactly those and leaves
+ * the real GTK widgets of dialogs and side panels alone. */
+
+@define-color chrome #25242d;
+@define-color ink #f2eff8;
+@define-color quiet #aaa4b7;
+/* Accent defaults: the approved lavender. accents/<name>.css replaces them with
+ * the desktop's accent colour and is reloaded when that setting changes. */
+@define-color accent #b49af4;
+@define-color accent_deep #7456c3;
+@define-color accent_hover #8266d2;
+@define-color accent_glow #6b55a0;
+@define-color accent_glow_dim #454066;
+@define-color accent_band #8f8aa0;
+@define-color hairline rgba(255, 255, 255, 0.11);
+@define-color rule rgba(255, 255, 255, 0.14);
+@define-color field rgba(255, 255, 255, 0.05);
+@define-color field_edge rgba(255, 255, 255, 0.15);
+@define-color hover rgba(255, 255, 255, 0.08);
+@define-color pressed rgba(255, 255, 255, 0.11);
+
+/* One family name only: LibreOffice reads it verbatim for the text it draws. */
+* { font-family: "Inter"; }
+window, dialog, messagedialog, tooltip, menu, popover { font-size: 10pt; }
+
+/* Menu and tooltip windows keep their own transparent corners. */
+window.background:not(.popup), dialog, messagedialog {
+  background-color: @chrome;
+  color: @ink;
+}
+
+/* Lists and text areas. LibreOffice also reads the field and highlight colours
+ * of what it paints itself (formula input, selected headers) from ".view". */
+.view, textview text { background-color: #2d2b32; color: @ink; }
+*:selected, selection {
+  background-color: @accent_deep;
+  color: #ffffff;
+}
+.view:disabled { color: @quiet; }
+/* LibreOffice paints panel handles and frame lines in this colour. It must stay
+ * lighter than the window, or section bands turn black. */
+.view:disabled:not(:nth-child(odd)):not(:nth-child(even)) { color: #55525f; }
+
+/* Header, tab row and ribbon share one surface. Each part offsets the same
+ * two glows by its own top edge (0, 47 and 84 px) so they meet seamlessly. */
+headerbar.norvi-office-header {
+  min-height: 47px;
+  padding: 0 6px;
+  border: none;
+  box-shadow: none;
+  color: @ink;
+  background-color: @chrome;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.07)),
+    radial-gradient(ellipse 32% 300px at 39% -22px, alpha(@accent_glow, 0.62), transparent 87%),
+    radial-gradient(ellipse 27% 338px at 83% 282px, alpha(@accent_glow_dim, 0.6), transparent 85%);
+  /* The first layer is a hairline under the title row. */
+  background-size: 96% 1px, auto, auto;
+  background-position: center bottom, 0 0, 0 0;
+  background-repeat: no-repeat;
+}
+/* Dialog title bars match the chrome. */
+headerbar:not(.norvi-office-header) {
+  border-color: @hairline;
+  background: #1f1e27;
+  box-shadow: none;
+  color: @ink;
+}
+notebook:not(:nth-child(odd)):not(:nth-child(even)) > header {
+  background-color: @chrome;
+  background-image:
+    radial-gradient(ellipse 32% 300px at 39% -69px, alpha(@accent_glow, 0.62), transparent 87%),
+    radial-gradient(ellipse 27% 338px at 83% 235px, alpha(@accent_glow_dim, 0.6), transparent 85%);
+}
+notebook:not(:nth-child(odd)):not(:nth-child(even)) {
+  background-color: @chrome;
+  background-image:
+    radial-gradient(ellipse 32% 300px at 39% -106px, alpha(@accent_glow, 0.62), transparent 87%),
+    radial-gradient(ellipse 27% 338px at 83% 198px, alpha(@accent_glow_dim, 0.6), transparent 85%);
+}
+/* Modules without a ribbon: the glow fades out across the menu bar row. */
+window.csd > grid > grid {
+  background-image:
+    linear-gradient(to bottom, alpha(@chrome, 0), @chrome),
+    radial-gradient(ellipse 32% 300px at 39% -69px, alpha(@accent_glow, 0.62), transparent 87%),
+    radial-gradient(ellipse 27% 338px at 83% 235px, alpha(@accent_glow_dim, 0.6), transparent 85%);
+}
+
+headerbar.norvi-office-header .title { font-size: 10.5pt; font-weight: 600; color: @ink; }
+headerbar.norvi-office-header button {
+  min-width: 30px;
+  min-height: 30px;
+  padding: 0;
+  margin: 0 2px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  box-shadow: none;
+  text-shadow: none;
+  -gtk-icon-shadow: none;
+  color: @ink;
+}
+headerbar.norvi-office-header button:hover { background-color: @hover; }
+headerbar.norvi-office-header button:active,
+headerbar.norvi-office-header button:checked { background-color: @pressed; }
+headerbar.norvi-office-header button:disabled { opacity: 0.26; }
+headerbar.norvi-office-header button.titlebutton {
+  min-width: 34px;
+  margin: 0 1px;
+  background-repeat: no-repeat;
+  background-position: center;
+  background-size: 16px 16px;
+}
+/* Thin window glyphs, the same weight as the header's line icons. */
+headerbar.norvi-office-header button.titlebutton image { opacity: 0; }
+headerbar.norvi-office-header button.titlebutton.minimize { background-image: -gtk-scaled(url("window-minimize.svg"), url("window-minimize-2x.svg")); }
+headerbar.norvi-office-header button.titlebutton.maximize { background-image: -gtk-scaled(url("window-maximize.svg"), url("window-maximize-2x.svg")); }
+window.maximized headerbar.norvi-office-header button.titlebutton.maximize { background-image: -gtk-scaled(url("window-restore.svg"), url("window-restore-2x.svg")); }
+headerbar.norvi-office-header button.titlebutton.close { background-image: -gtk-scaled(url("window-close.svg"), url("window-close-2x.svg")); }
+headerbar.norvi-office-header button.titlebutton.close:hover { background-color: #c0392f; }
+headerbar.norvi-office-header separator.titlebutton {
+  opacity: 1;
+  min-width: 1px;
+  margin: 13px 7px 13px 5px;
+  background-color: rgba(255, 255, 255, 0.13);
+}
+
+/* Classic menu bar (Base, Math and the Start Center) */
+menubar {
+  padding: 0 4px;
+  border: none;
+  box-shadow: none;
+  background: none;
+  color: #cfc9da;
+}
+menubar > menuitem {
+  min-height: 0;
+  padding: 4px 9px;
+  border: none;
+  border-radius: 5px;
+  box-shadow: none;
+  color: #cfc9da;
+}
+menubar > menuitem:hover { background-color: @hover; color: @ink; }
+
+/* Menus: the Norvi menu material, opaque enough to read without backdrop blur.
+ * The header's own menu keeps the blurred variant its module sets. */
+menu:not(.norvi-header-menu) {
+  margin: 4px;
+  padding: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background-color: rgba(45, 45, 50, 0.97);
+  color: @ink;
+}
+.csd.popup decoration { border-radius: 14px; }
+.csd.popup.norvi-header-popup decoration { border-radius: 20px; }
+menu menuitem {
+  min-height: 0;
+  padding: 6px 10px;
+  border-radius: 8px;
+  color: @ink;
+}
+menu menuitem:hover { background-color: rgba(255, 255, 255, 0.1); color: #ffffff; }
+menu menuitem:disabled { color: alpha(@ink, 0.42); }
+menu menuitem accelerator { color: @quiet; }
+menu separator { min-height: 1px; margin: 5px 8px; background-color: rgba(255, 255, 255, 0.08); }
+
+/* Tabs: ribbon and dialogs share the underlined tab. */
+notebook > header {
+  margin: 0;
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background-color: transparent;
+}
+notebook > header > tabs > tab {
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  padding: 7px 13px 9px;
+  border: none;
+  outline: none;
+  background: none;
+  box-shadow: none;
+  color: #cfc9da;
+  font-weight: 600;
+}
+notebook > header > tabs > tab:hover { color: @ink; }
+notebook > header > tabs > tab:checked {
+  color: #ffffff;
+  font-weight: 700;
+  background-color: transparent;
+  background-image: linear-gradient(@accent, @accent);
+  background-repeat: no-repeat;
+  background-position: center bottom;
+  background-size: 38px 3px;
+}
+
+/* Dialog pages sit on a faintly raised panel; the ribbon card below is more specific. */
+notebook > stack { background-color: rgba(255, 255, 255, 0.035); }
+
+/* Ribbon card */
+notebook:not(:nth-child(odd)):not(:nth-child(even)) > stack {
+  background-color: rgba(28, 27, 37, 0.72);
+  border: 1px solid @hairline;
+  border-radius: 12px;
+}
+
+/* Push buttons of dialogs and side panels. The ribbon rule below is more specific. */
+button:not(.titlebutton) {
+  border: 1px solid @field_edge;
+  border-radius: 5px;
+  background-color: #33313c;
+  background-image: none;
+  box-shadow: none;
+  text-shadow: none;
+  color: @ink;
+}
+button:not(.titlebutton):hover { background-color: #3d3a48; }
+button:not(.titlebutton):active,
+button:not(.titlebutton):checked { background-color: #474453; }
+button:not(.titlebutton):disabled { border-color: rgba(255, 255, 255, 0.07); color: @quiet; }
+button.default { border-color: transparent; background-color: @accent_deep; color: #ffffff; }
+button.default:hover { background-color: @accent_hover; }
+/* Prompt buttons run edge to edge, as the desktop theme draws them. */
+messagedialog.csd .dialog-action-area button {
+  border-style: solid none none solid;
+  border-color: @hairline;
+  border-radius: 0;
+  background-color: transparent;
+  color: @ink;
+}
+messagedialog.csd .dialog-action-area button:first-child { border-left-style: none; }
+messagedialog.csd .dialog-action-area button:hover { background-color: @hover; }
+messagedialog.csd .dialog-action-area button.default { color: @accent; }
+
+check, radio {
+  border: 1px solid rgba(255, 255, 255, 0.34);
+  background-color: @field;
+  background-image: none;
+  box-shadow: none;
+}
+check:checked, check:indeterminate, radio:checked {
+  border-color: @accent_deep;
+  background-color: @accent_deep;
+  color: #ffffff;
+}
+/* A command that only reports a state shows no empty box in a menu. */
+menu menuitem check:not(:checked):not(:indeterminate),
+menu menuitem radio:not(:checked) { border-color: transparent; background-color: transparent; }
+
+/* Ribbon and toolbar controls */
+toolbar {
+  padding: 0;
+  border: none;
+  box-shadow: none;
+  background: none;
+}
+toolbar button,
+toolbar toolbutton > button,
+button:not(.combo):not(.up):not(.down):not(:nth-child(odd)):not(:nth-child(even)) {
+  min-width: 0;
+  min-height: 0;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  outline: none;
+  background: none;
+  box-shadow: none;
+  text-shadow: none;
+  color: @ink;
+}
+toolbar button:hover,
+toolbar toolbutton > button:hover,
+button:not(.combo):not(.up):not(.down):not(:nth-child(odd)):not(:nth-child(even)):hover { background-color: @hover; }
+toolbar button:active,
+toolbar toolbutton > button:active,
+button:not(.combo):not(.up):not(.down):not(:nth-child(odd)):not(:nth-child(even)):active { background-color: @pressed; }
+toolbar button:checked,
+toolbar toolbutton > button:checked,
+button:not(.combo):not(.up):not(.down):not(:nth-child(odd)):not(:nth-child(even)):checked {
+  background-color: rgba(255, 255, 255, 0.11);
+  border-color: rgba(255, 255, 255, 0.07);
+}
+toolbar button:disabled,
+toolbar toolbutton > button:disabled { color: @quiet; }
+/* Side panel title bars keep room around their small buttons. */
+box > label + toolbar.small-button toolbutton > button,
+box > expander + toolbar.small-button toolbutton > button { padding: 5px; }
+toolbar separator, separator {
+  min-width: 1px;
+  min-height: 1px;
+  background-color: @rule;
+}
+
+/* Writer's style gallery: room for a style name on two lines. */
+box > box:only-child > scrolledwindow.frame:only-child { min-height: 70px; }
+box > box:only-child > scrolledwindow.frame:only-child > iconview { font-size: 11px; }
+
+/* Draw's fill colour sits in a field like the fill type beside it. */
+#combobox + box.vertical > toolbar.small-button {
+  min-height: 26px;
+  border: 1px solid @field_edge;
+  border-radius: 5px;
+  background-color: @field;
+}
+
+/* Fields. LibreOffice builds its own combo boxes: a box named "combobox". */
+entry,
+spinbutton,
+combobox button.combo,
+#combobox > button.combo {
+  min-height: 26px;
+  border: 1px solid @field_edge;
+  border-radius: 5px;
+  background-color: @field;
+  background-image: none;
+  box-shadow: none;
+  text-shadow: none;
+  color: @ink;
+  caret-color: @accent;
+}
+entry:focus,
+spinbutton:focus { box-shadow: inset 0 -2px @accent; }
+entry:disabled { color: @quiet; }
+spinbutton > entry {
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+}
+spinbutton > button.up,
+spinbutton > button.down {
+  border-style: none;
+  border-radius: 0;
+  background: none;
+}
+spinbutton > button.up:hover,
+spinbutton > button.down:hover { background-color: @hover; }
+#combobox > entry.combo {
+  padding: 0 2px 0 8px;
+  border-right-style: none;
+  border-radius: 5px 0 0 5px;
+}
+#combobox > entry.combo + button.combo {
+  min-width: 18px;
+  padding: 0 5px 0 2px;
+  border-left-style: none;
+  border-radius: 0 5px 5px 0;
+}
+#combobox > button.combo:only-child { padding: 0 7px 0 9px; }
+#combobox > button.combo:hover { background-color: @hover; }
+#combobox > button.combo:checked { background-color: @pressed; }
+
+/* Calc formula bar and other framed panels */
+scrolledwindow#monoborder {
+  border: 1px solid #484450;
+  border-radius: 4px;
+  background-color: #2d2b32;
+}
+
+/* Base section titles. LibreOffice draws the title text black on a dark desktop,
+ * so the band stays light enough to read it (about 6:1) in every accent. */
+#monoborder > viewport > box > grid:first-child { background-color: @accent_band; }
+
+/* Flat buttons (Start Center, side panels) and links */
+button.flat, button.link {
+  border-color: transparent;
+  border-radius: 8px;
+  background: none;
+  box-shadow: none;
+}
+button.flat:hover { background-color: @hover; }
+button.flat:active, button.flat:checked { background-color: @pressed; }
+
+/* Scrollbars */
+scrollbar {
+  border: none;
+  background-color: @chrome;
+}
+scrollbar slider {
+  min-width: 6px;
+  min-height: 6px;
+  border: 3px solid transparent;
+  border-radius: 99px;
+  background-color: rgba(255, 255, 255, 0.26);
+  background-clip: padding-box;
+}
+scrollbar slider:hover { background-color: rgba(255, 255, 255, 0.4); }
+scrollbar slider:active { background-color: @accent; }
+
+/* Tooltips */
+tooltip, tooltip.background {
+  border: 1px solid @hairline;
+  border-radius: 8px;
+  background-color: #33313c;
+  color: @ink;
+}

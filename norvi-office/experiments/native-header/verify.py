@@ -20,7 +20,7 @@ from PIL import Image, ImageChops
 
 from fixtures import connect, prop, stop_office
 from geometry_relay import header_bars, geometry
-from actions import Status
+from actions import Status, on_main
 from routing import COMMANDS
 
 ROOT = Path(sys.argv[1]).resolve()
@@ -141,13 +141,16 @@ def native_enabled(context, owner, command):
     url = uno.createUnoStruct("com.sun.star.util.URL")
     url.Complete = COMMANDS[command]
     _, url = transformer.parseStrict(url)
-    dispatch = owner.queryDispatch(url, "", 0)
-    if dispatch is None:
-        return False
-    listener = Status()
-    dispatch.addStatusListener(listener, url)
-    dispatch.removeStatusListener(listener, url)
-    return listener.enabled
+
+    def ask():
+        dispatch = owner.queryDispatch(url, "", 0)
+        if dispatch is None:
+            return False
+        listener = Status()
+        dispatch.addStatusListener(listener, url)
+        dispatch.removeStatusListener(listener, url)
+        return listener.enabled
+    return on_main(context.ServiceManager.createInstanceWithContext("com.sun.star.awt.AsyncCallback", context), ask, 10)
 
 
 def activate(name):
@@ -235,11 +238,17 @@ def transition_probe():
         # The opt-in profile removes the left quick-access strip, so tabs shift left.
         tab_x = 278 if os.environ.get("NORVI_OFFICE_CALC_RIBBON") == "1" else 450
         call("Click", x + tab_x, y + 65)
+        title_only = wait(lambda: next((item for item in json.loads(call("State", geometry=True)[0])
+                                      if item["reason"] == "transition" and item["enabled"] and
+                                      item["edge"] < before["edge"]), None),
+                          "Native titlebar glass did not survive the layout check", seconds=.4)
+        assert title_only["transitionCount"] > before["transitionCount"]
+        call("Capture", "calc-tab-transition.png")
+        # A dead geometry bridge must still fail fully opaque on expiry.
         paused = wait(lambda: next((item for item in json.loads(call("State", geometry=True)[0])
                                    if item["reason"] == "transition" and not item["enabled"]), None),
                       "Ribbon input never suspended glass", seconds=1)
         assert paused["transitionCount"] > before["transitionCount"]
-        call("Capture", "calc-tab-transition.png")
         time.sleep(0.45)
         # Even after the hold, an old report cannot bring back the mask.
         opaque = pair("calc-transition-stalled", False, "transition")

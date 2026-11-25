@@ -1,6 +1,7 @@
 import importlib.util
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -85,7 +86,11 @@ class ReleaseTests(unittest.TestCase):
     def test_unknown_native_build_is_not_enabled(self):
         contract = json.loads((ROOT / 'compatibility.json').read_text())['experimental_native_adapter']
         self.assertFalse(contract['enabled_by_default'])
-        self.assertEqual(contract['libreoffice_versions'], ['26.2.6.3'])
+        self.assertEqual(contract['libreoffice_versions'], ['26.2.6.3', '26.2.7.3'])
+        header = (ROOT / 'norvi-office/experiments/native-header/header.c').read_text()
+        engines = re.search(r'qualified_engines\[\] = \{([^}]*)\}', header)[1]
+        self.assertEqual(re.findall(r'"([0-9.]+)"', engines), contract['libreoffice_versions'],
+                         'The header module and the contract must qualify the same engines')
         self.assertIn('unmodified upstream', contract['unknown_version_behavior'])
 
 

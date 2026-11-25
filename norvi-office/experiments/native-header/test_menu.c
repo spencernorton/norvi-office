@@ -16,7 +16,7 @@ static void verify_count(GMenu *root, gint expected) {
     GMenu *flat = g_menu_new();
     GHashTable *seen = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, NULL);
     GString *signature = g_string_new(NULL);
-    append_menus(G_MENU_MODEL(root), flat, seen, signature, 0);
+    append_menus(G_MENU_MODEL(root), flat, seen, signature, 0, NULL);
     g_assert_cmpint(g_menu_model_get_n_items(G_MENU_MODEL(flat)), ==, expected);
     g_string_free(signature, TRUE);
     g_hash_table_unref(seen);

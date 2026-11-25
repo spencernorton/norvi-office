@@ -1,5 +1,6 @@
 import importlib.util
 from io import BytesIO
+import json
 import os
 from pathlib import Path
 import shutil
@@ -9,6 +10,7 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+import xml.etree.ElementTree as ET
 from zipfile import ZipFile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -37,8 +39,14 @@ class PreviewTests(unittest.TestCase):
             document = home / "retained-preview-document.ods"
             document.write_bytes(b"user work")
             manifest = data / "norvi-office/visual-preview/shortcuts.json"
-            with patch.object(installer, "locations", return_value=(home, data, manifest)):
+            desktop = home / "Desktop"
+            with patch.object(installer, "locations", return_value=(home, data, desktop, manifest)), \
+                    patch.object(installer, "trust_desktop") as trust:
                 installer.install()
+                self.assertEqual(trust.call_count, 2)
+                desktop_calc = desktop / "Office Preview - calc.desktop"
+                self.assertEqual(desktop_calc.stat().st_mode & 0o777, 0o755)
+                self.assertIn("Name=Office Preview — Calc", desktop_calc.read_text())
                 preview = applications / "norvi-office-preview-calc.desktop"
                 original = preview.read_text()
                 preview.write_text(original + "# user edit\n")
@@ -50,11 +58,54 @@ class PreviewTests(unittest.TestCase):
             self.assertEqual(normal.read_text(), original_office)
             self.assertEqual(document.read_bytes(), b"user work")
             self.assertFalse(preview.exists())
+            self.assertFalse(desktop_calc.exists())
             self.assertFalse((home / ".local/bin/norvi-office-preview").exists())
+
+    @unittest.skipUnless(shutil.which("desktop-file-validate"), "Linux desktop validation required")
+    def test_legacy_install_adopts_matching_desktop_copy_but_preserves_foreign_copy(self):
+        installer = load("preview_installer_upgrade", ROOT / "scripts/install_visual_preview.py")
+        for foreign in (False, True):
+            with self.subTest(foreign=foreign), tempfile.TemporaryDirectory() as temporary:
+                home = Path(temporary)
+                data, desktop = home / "share", home / "Desktop"
+                manifest = data / "norvi-office/visual-preview/shortcuts.json"
+                with patch.object(installer, "locations", return_value=(home, data, desktop, manifest)), \
+                        patch.object(installer, "trust_desktop"):
+                    installer.install()
+                    record = json.loads(manifest.read_text())
+                    record["files"] = [r for r in record["files"] if Path(r["path"]).parent != desktop]
+                    manifest.write_text(json.dumps(record))
+                    copy = desktop / "Office Preview - calc.desktop"
+                    if foreign:
+                        copy.write_text("user's launcher")
+                        with self.assertRaises(ValueError):
+                            installer.install()
+                        self.assertEqual(copy.read_text(), "user's launcher")
+                        self.assertEqual(len(json.loads(manifest.read_text())["files"]), 4)
+                    else:
+                        installer.install()
+                        self.assertEqual(len(json.loads(manifest.read_text())["files"]), 6)
+                        installer.uninstall()
+                        self.assertFalse(copy.exists())
+
+    def test_visible_viewer_requires_its_own_running_linked_video_stream(self):
+        visible = load("preview_visible", EXPERIMENTS / "preview/visible.py")
+        objects = [
+            {"id": 35, "type": "PipeWire:Interface:Client",
+             "info": {"props": {"application.process.id": 123}}},
+            {"id": 39, "type": "PipeWire:Interface:Node",
+             "info": {"props": {"client.id": 35, "media.class": "Stream/Input/Video"}, "state": "running"}},
+            {"id": 56, "type": "PipeWire:Interface:Link", "info": {"state": "active", "input-node-id": 39}},
+        ]
+        self.assertTrue(visible.video_connected(objects, 123))
+        self.assertFalse(visible.video_connected(objects, 456))
+        self.assertFalse(visible.video_connected(objects[:2], 123))
+        objects[1]["info"]["state"] = "suspended"
+        self.assertFalse(visible.video_connected(objects, 123))
 
     def test_ribbon_uses_official_installed_icons_without_vendored_zip(self):
         fixture = SimpleNamespace(connect=None, prop=None, stop_office=None)
-        with patch.dict(sys.modules, {"fixtures": fixture}):
+        with patch.dict(sys.modules, {"uno_utils": fixture}):
             ribbon = load("preview_ribbon", EXPERIMENTS / "native-header/calc_ribbon.py")
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -77,6 +128,15 @@ class PreviewTests(unittest.TestCase):
                     self.assertEqual(theme.read("LICENSE"), b"upstream license")
                     self.assertIn(b"#f2eff8", theme.read("cmd/sc_paste.svg"))
                     self.assertNotIn(b"cmd/sc_paste.svg", theme.read("links.txt"))
+            writer_output = root / "writer.oxt"
+            with patch.object(ribbon, "SYSTEM_ICONS", icons):
+                ribbon.preview_package(base, writer_output, "writer")
+            with ZipFile(writer_output) as archive:
+                self.assertNotIn(b"Cell Styles", archive.read("norvi_glass.xcu"))
+                with ZipFile(BytesIO(archive.read("iconsets/images_sifr_dark_svg.zip"))) as theme:
+                    for prefix in ("sc_", "lc_", "32/"):
+                        for command in ("fontcolor", "backgroundcolor", "grow", "numberformatpercent", "paste"):
+                            self.assertIn(b"stroke-width=\"1.55\"", theme.read(f"cmd/{prefix}{command}.svg"))
 
     def test_preview_separates_bus_config_and_display_from_live_session(self):
         launch = load("preview_launch", EXPERIMENTS / "preview/launch.py")
@@ -96,6 +156,54 @@ class PreviewTests(unittest.TestCase):
             self.assertEqual(parent["XDG_CONFIG_HOME"], "live-config")
             self.assertEqual(len(environment["NORVI_OFFICE_HEADER_TOKEN"]), 64)
             self.assertEqual(os.stat(workspace / "runtime").st_mode & 0o777, 0o700)
+
+    def test_shared_artwork_covers_audited_commands_and_retains_native_fallbacks(self):
+        ribbon = load("shared_ribbon_artwork", EXPERIMENTS / "native-header/calc_ribbon.py")
+        receipt = json.loads((ROOT / "tests/fixtures/notebookbar-artwork.json").read_text())
+        # Real Sifr aliases and dotted shape names exercise native lookup keys,
+        # rather than assuming a command's display label is its image filename.
+        overridden = {
+            "cmd/sc_drawtext.svg": "cmd/sc_text.svg",
+            "cmd/lc_setdefault.svg": "cmd/lc_resetattributes.svg",
+            "cmd/32/cellverttop.svg": "cmd/32/aligntop.svg",
+            "cmd/lc_openfromwriter.svg": "cmd/lc_open.svg",
+        }
+        fallback = "cmd/lc_upstream.svg cmd/lc_original.svg\n"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            base, icons = root / "base.oxt", root / "official-icons.zip"
+            with ZipFile(base, "w") as archive:
+                archive.writestr("norvi_glass.xcu", (ROOT / "norvi-office/extension/norvi_glass.xcu").read_bytes())
+            with ZipFile(icons, "w") as archive:
+                archive.writestr("links.txt", "".join(f"{key} {target}\n" for key, target in overridden.items()) + fallback)
+                archive.writestr("LICENSE", "official theme license")
+                archive.writestr("cmd/lc_original.svg", "upstream fallback artwork")
+                for field in receipt["native_fields"]:
+                    archive.writestr(f"cmd/lc_{field}.svg", "native field controller artwork")
+            for appearance, ink in (("dark", "#f2eff8"), ("light", "#2e3436")):
+                with self.subTest(appearance=appearance):
+                    output = root / f"{appearance}.oxt"
+                    ribbon.preview_package(base, output, "impress", icons, appearance)
+                    style = "sifr_dark_svg" if appearance == "dark" else "sifr_svg"
+                    with ZipFile(output) as package, ZipFile(BytesIO(package.read(f"iconsets/images_{style}.zip"))) as theme:
+                        self.assertNotIn(b"Cell Styles", package.read("norvi_glass.xcu"))
+                        self.assertEqual(theme.read("LICENSE"), b"official theme license")
+                        self.assertEqual(theme.read("links.txt"), fallback.encode())
+                        self.assertEqual(theme.read("cmd/lc_original.svg"), b"upstream fallback artwork")
+                        for field in receipt["native_fields"]:
+                            self.assertEqual(theme.read(f"cmd/lc_{field}.svg"), b"native field controller artwork")
+                        for module, audit in receipt["modules"].items():
+                            for tab, commands in audit["tabs"].items():
+                                for command in commands:
+                                    for prefix, size in (("sc_", 16), ("lc_", 24), ("32/", 32)):
+                                        with self.subTest(module=module, tab=tab, command=command, size=size):
+                                            svg = ET.fromstring(theme.read(f"cmd/{prefix}{command}.svg"))
+                                            self.assertEqual(svg.get("viewBox"), "0 0 24 24")
+                                            self.assertEqual(svg.get("width"), str(size))
+                                            path = svg.find("{http://www.w3.org/2000/svg}path")
+                                            self.assertEqual(path.get("fill"), "none")
+                                            self.assertEqual(path.get("stroke-width"), "1.55")
+                                            self.assertIn(path.get("stroke"), (ink, "#c1aaf3" if appearance == "dark" else "#7460d4"))
 
 
 if __name__ == "__main__":

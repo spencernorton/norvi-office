@@ -44,6 +44,8 @@ def preview_environment(directory, parent):
 
 
 def launch(app):
+    for program in ("pipewire", "wireplumber", "pw-dump"):
+        subprocess.run([program, "--version"], check=True, stdout=subprocess.DEVNULL)
     installed = Path("/usr/share/norvi-office")
     contract = json.loads((installed / "compatibility.json").read_text())["experimental_native_adapter"]
     version = subprocess.check_output(["libreoffice", "--version"], text=True).split()[1]
@@ -79,7 +81,10 @@ def launch(app):
     until = time.monotonic() + 60
     while time.monotonic() < until:
         if (directory / "ready.json").exists():
-            print(json.dumps({**record, "ready": True}))
+            ready = json.loads((directory / "ready.json").read_text())
+            if not ready.get("viewer", {}).get("mapped"):
+                raise RuntimeError("The preview document is ready but its host viewer is not visible")
+            print(json.dumps({**record, "ready": True, "viewer": ready["viewer"]}))
             return
         if process.poll() is not None:
             break

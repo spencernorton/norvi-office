@@ -3,15 +3,20 @@ import json
 import os
 from pathlib import Path
 import sys
+import threading
 import time
 
 import uno
 import unohelper
+from urllib.parse import unquote, urlsplit
 
+from com.sun.star.awt import XCallback
 from com.sun.star.frame import XStatusListener
+from com.sun.star.lang import XEventListener
 from gi.repository import Gio, GLib
 
 from routing import COMMANDS, matching_frame, uses_pipe
+from uno_utils import verify_profile
 
 API = """<node><interface name="dev.norvi.OfficeHeader">
   <method name="Describe">
@@ -38,6 +43,65 @@ class Status(unohelper.Base, XStatusListener):
         self.enabled = False
 
 
+def suite(pipe):
+    """Whether the process the launcher started is still there, checked as the launcher checks it; None without
+    the launcher's record (the isolated harness). That process outlives an engine that restarts itself in place."""
+    try:
+        leader = json.loads(Path(os.environ["NORVI_OFFICE_SESSION_DIR"], "running.json").read_text())["office_group"]
+    except (KeyError, OSError, TypeError, ValueError):
+        return None
+    try:
+        return f"--accept=pipe,name={pipe};urp;".encode() in Path(f"/proc/{leader}/cmdline").read_bytes().split(b"\0")
+    except OSError:
+        return False
+
+
+class Gone(unohelper.Base, XEventListener):
+    """Office closed its end of the pipe. While the suite's own process is still there its engine may be
+    restarting itself, so the helper starts over and waits for it; once the suite has gone the helper leaves."""
+    def __init__(self, pipe):
+        self.pipe = pipe
+
+    def disposing(self, _event):
+        try:
+            if suite(self.pipe):
+                os.execv(sys.executable, sys.orig_argv)
+        finally:
+            os._exit(0)  # whatever failed above, never stay behind with a closed pipe
+
+
+class OnMain(unohelper.Base, XCallback):
+    """One piece of work for Office's own main thread."""
+    def __init__(self, work):
+        self.work = work
+        self.done = threading.Event()
+        self.result = self.error = None
+
+    def notify(self, _data):
+        work = self.work
+        if work is None:
+            return
+        try:
+            self.result = work()
+        except Exception as error:
+            self.error = error
+        self.done.set()
+
+
+def on_main(main, work, wait=0.9):
+    """Base's controller is main-thread only: asking it from a bridge thread corrupted Office's
+    memory and froze every open window. `main` is Office's AsyncCallback service; the calls
+    `work` makes run on the thread that calls it back."""
+    task = OnMain(work)
+    main.addCallback(task, None)
+    if not task.done.wait(wait):
+        task.work = None  # Office is busy and the caller has stopped waiting
+        raise TimeoutError
+    if task.error:
+        raise task.error
+    return task.result
+
+
 class Broker:
     def __init__(self, pipe, token):
         self.token = token
@@ -50,20 +114,31 @@ class Broker:
                 self.context = resolver.resolve(f"uno:pipe,name={pipe};urp;StarOffice.ComponentContext")
                 break
             except Exception:
+                if suite(pipe) is False:
+                    sys.exit(0)  # the suite closed: this helper was only waiting in case its engine came back
                 time.sleep(0.1)
         else:
             raise RuntimeError("Private LibreOffice pipe did not become available")
+        self.gone = Gone(pipe)
+        for bridge in local.ServiceManager.createInstanceWithContext(
+                "com.sun.star.bridge.BridgeFactory", local).getExistingBridges():
+            bridge.addEventListener(self.gone)
         manager = self.context.ServiceManager
+        expected_profile = os.environ.get("NORVI_OFFICE_PROFILE_URI")
+        if expected_profile:
+            verify_profile(self.context, Path(unquote(urlsplit(expected_profile).path)))
         self.desktop = manager.createInstanceWithContext("com.sun.star.frame.Desktop", self.context)
         self.transformer = manager.createInstanceWithContext("com.sun.star.util.URLTransformer", self.context)
         self.dispatcher = manager.createInstanceWithContext("com.sun.star.frame.DispatchHelper", self.context)
+        self.main = manager.createInstanceWithContext("com.sun.star.awt.AsyncCallback", self.context)
         self.bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
         self.registration = self.bus.register_object(
             "/dev/norvi/OfficeHeader", Gio.DBusNodeInfo.new_for_xml(API).interfaces[0],
             self.call, None, None,
         )
         self.owner = Gio.bus_own_name_on_connection(
-            self.bus, "dev.norvi.OfficeHeader", Gio.BusNameOwnerFlags.NONE, None, None,
+            self.bus, os.environ.get("NORVI_OFFICE_HEADER_BUS", "dev.norvi.OfficeHeader"),
+            Gio.BusNameOwnerFlags.NONE, None, None,
         )
 
     def frame(self, sender, pid, handle, identity, token, bind=False):
@@ -108,14 +183,19 @@ class Broker:
             pid, handle, identity = arguments[:3]
             frame = self.frame(sender, pid, handle, identity, arguments[-1], bind=method == "Describe")
             if method == "Describe":
-                states = {name: frame is not None and self.enabled(frame, name) for name in COMMANDS}
+                # The header gives up on a description after one second.
+                states = {name: False for name in COMMANDS} if frame is None else on_main(
+                    self.main, lambda: {name: self.enabled(frame, name) for name in COMMANDS})
                 invocation.return_value(GLib.Variant("(a{sb})", (states,)))
             elif method == "Activate":
                 command = arguments[3]
                 allowed = frame is not None and command in COMMANDS
                 if allowed:
-                    frame.activate()
-                    allowed = self.enabled(frame, command)
+                    def ready():
+                        frame.activate()
+                        return self.enabled(frame, command)
+                    # The header waits 30 s for an action, so a busy Office still gets the click.
+                    allowed = on_main(self.main, ready, 25)
                 if allowed:
                     # Dispatch against the matched frame, preserving LibreOffice's
                     # own Save/Open dialogs, undo manager and command semantics.
@@ -127,8 +207,9 @@ class Broker:
 
 
 if __name__ == "__main__":
-    root = os.environ.get("NORVI_OFFICE_TEST_DIR")
-    if not root or os.environ.get("XDG_CONFIG_HOME") != str(Path(root) / "config"):
+    root = os.environ.get("NORVI_OFFICE_SESSION_DIR") or os.environ.get("NORVI_OFFICE_TEST_DIR")
+    desktop = root and os.environ.get("NORVI_OFFICE_SESSION_DIR") == root and Path(root, "native-session.json").is_file()
+    if not root or (not desktop and os.environ.get("XDG_CONFIG_HOME") != str(Path(root) / "config")):
         sys.exit("Run the isolated native header harness.")
     token = os.environ["NORVI_OFFICE_HEADER_TOKEN"]
     broker = Broker(sys.argv[1], token)

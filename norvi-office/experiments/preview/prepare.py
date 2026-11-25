@@ -16,10 +16,9 @@ if not directory.name.startswith("capture.preview-") or profile.exists():
     raise ValueError("The visual preview must use a fresh separate profile")
 make(directory)
 package = Path(os.environ["NORVI_OFFICE_PREVIEW_OXT"])
-if app == "calc":
-    overlay = directory / "NorviRibbon.oxt"
-    preview_package(package, overlay)
-    package = overlay
+overlay = directory / "NorviRibbon.oxt"
+preview_package(package, overlay, app)
+package = overlay
 subprocess.run(["unopkg", "add", "-env:UserInstallation=" + profile.as_uri(), str(package)], check=True)
 if app == "calc":
     prepare(profile)

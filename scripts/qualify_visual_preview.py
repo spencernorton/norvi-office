@@ -49,6 +49,10 @@ def descend(node, depth=0):
 
 
 record = json.loads((directory / "ready.json").read_text())
+sys.path.insert(0, str(source.parent / "preview"))
+from visible import observe_viewer  # noqa: E402
+viewer = observe_viewer(record["shell_pid"])
+assert viewer and viewer["pid"] == record["viewer"]["pid"], "The host viewer is not mapped and streaming"
 context = connect(record["pipe"])
 desktop = context.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", context)
 doc = desktop.getCurrentComponent()
@@ -58,6 +62,35 @@ assert url.scheme == "file" and document_path.parent == directory and document_p
     "Ember Plan.ods", "Ember Brief.odt",
 ), "Not the fictional preview document"
 app = "calc" if doc.supportsService("com.sun.star.sheet.SpreadsheetDocument") else "writer"
+
+
+def tab_transitions():
+    """Exercise the pinned 1x preview tabs while sampling its compositor state."""
+    results = []
+    window = next(item for item in json.loads(call("Windows")[0]) if item["type"] == 0)
+    x, y, _width, _height = window["frame"]
+    for tab, offset in (("Insert", 255), ("Home", 150), ("Layout", 350), ("Home", 150)):
+        started = time.monotonic()
+        call("Click", str(x + offset), str(y + 66))
+        samples = []
+        while time.monotonic() - started < .6:
+            state = next(item for item in json.loads(call("State", geometry_api=True)[0]) if item["app"] == app)
+            samples.append({"at_ms": round((time.monotonic() - started) * 1000),
+                            "enabled": state["enabled"], "reason": state["reason"], "edge": state["edge"]})
+            time.sleep(.008)
+        assert all(s["enabled"] for s in samples), f"{tab}: the native titlebar lost glass"
+        assert samples[-1]["reason"] == "active", f"{tab}: ribbon did not recover"
+        settling = [index for index, sample in enumerate(samples) if sample["reason"] == "transition"]
+        recovery = 0
+        if settling:
+            end = next(sample for sample in samples[settling[-1] + 1:] if sample["reason"] == "active")
+            recovery = end["at_ms"] - samples[settling[0]]["at_ms"]
+        assert recovery < 150, f"{tab}: ribbon paused for {recovery} ms"
+        results.append({"tab": tab, "ribbon_recovery_ms": recovery, "samples": samples})
+    return results
+
+
+transitions = tab_transitions()
 Atspi.set_timeout(150, 150)
 frames = [frame for application in geometry.children(Atspi.get_desktop(0))
           if application.get_name() == "soffice" for frame in geometry.children(application)
@@ -127,7 +160,10 @@ for name, box in (("header", header), ("body", body)):
 assert differences["header"] > 1000, differences
 assert differences["body"] == 0, differences
 receipt = {"app": app, "header_controls": "passed", "undo_redo": "passed", "f10_menu": "passed",
+           "host_viewer": viewer,
+           "tab_transitions": transitions,
            "glass": state, "backdrop_changed_pixels": differences,
            "sampled_opaque_pixels": (body[2] - body[0]) * (body[3] - body[1])}
 (directory / "acceptance.json").write_text(json.dumps(receipt, indent=2) + "\n")
-print(json.dumps(receipt))
+print(json.dumps({key: value for key, value in receipt.items() if key != "tab_transitions"} |
+                 {"tab_recovery_ms": [tab["ribbon_recovery_ms"] for tab in transitions]}))

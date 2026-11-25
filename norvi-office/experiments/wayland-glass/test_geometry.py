@@ -1,5 +1,8 @@
 """Boundary regressions for the preview's accessibility adapter."""
 import unittest
+import importlib.util
+from pathlib import Path
+from types import SimpleNamespace
 
 from extension.geometry import Atspi, frame_geometry
 
@@ -46,6 +49,14 @@ def frame(body_y=177, extras=(), root_count=1, showing=True):
 
 
 class GeometryTests(unittest.TestCase):
+    def test_layout_event_from_disappearing_application_is_ignored(self):
+        source = Path(__file__).resolve().parent.parent / "native-header/geometry_relay.py"
+        spec = importlib.util.spec_from_file_location("layout_relay_regression", source)
+        relay = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(relay)
+        relay.layout_changed(SimpleNamespace(source=SimpleNamespace(get_application=lambda: None)))
+        self.assertEqual(relay.pending, 0)
+
     def test_follows_work_panel_after_toolbar_height_change(self):
         for y in (125, 177, 208, 240):
             with self.subTest(y=y):

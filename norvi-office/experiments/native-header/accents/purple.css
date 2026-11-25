@@ -1,0 +1,9 @@
+/* GNOME's purple accent: the approved Norvi lavender, exactly as in the design study. */
+@define-color accent_deep #7456c3;
+@define-color accent #b49af4;
+@define-color accent_hover #8266d2;
+@define-color accent_glow #6b55a0;
+@define-color accent_glow_dim #454066;
+@define-color accent_icon #c1aaf3;
+@define-color accent_icon_light #7460d4;
+@define-color accent_band #8f8aa0;

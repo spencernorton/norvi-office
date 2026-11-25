@@ -1,5 +1,122 @@
 # Changelog
 
+## 1.4.3 — Base's section bars follow the accent
+
+- Base's Database, Tasks and Forms bars were the design study's violet-grey in
+  every accent. They now take a muted tint of the desktop accent, kept as light
+  as the original bar so LibreOffice's black titles stay at the same contrast,
+  about 6.3:1. Purple keeps the original bar exactly.
+
+## 1.4.2 — Qualified on LibreOffice 26.2.7
+
+- Ubuntu's LibreOffice security update to 26.2.7 turned the suite back into
+  plain LibreOffice, as designed for an engine it had not been checked on: the
+  launcher and the header each accepted 26.2.6 only. Both now also accept
+  26.2.7, from one list that a test keeps identical in the contract and the
+  header.
+- Checked on 26.2.7: the four official ribbon layouts the suite builds from
+  are byte-identical to 26.2.6's, and Calc, Writer, Impress, Draw, Base and
+  Math each open with the header, the grouped ribbon and the desktop accent,
+  with no GTK warnings.
+
+## 1.4.1 — LibreOffice's own colours follow a live accent change
+
+- With the suite open, a new accent reached only what GTK draws: the header and
+  its glow. The selection, the active tab's underline and the ribbon's
+  background kept the old accent, because LibreOffice copies those colours and
+  copies them again only when the widget inside its window reports a style
+  change. After loading a new accent the header now reports one on every
+  widget, and LibreOffice repaints in the new colour.
+
+## 1.4.0 — The desktop accent colour, and a Base icon
+
+- The suite follows the accent colour chosen in Settings. It was always purple:
+  the launcher fixed the GTK theme to Yaru purple and the stylesheet fixed the
+  lavender accent. Selection, the active tab's underline, default buttons,
+  check boxes, the caret and the glow behind the header and ribbon now take the
+  desktop accent, and change while the suite is open. The matching dark Yaru
+  theme and the ribbon icons drawn in the accent follow at the next start.
+- Purple keeps the approved lavender exactly; every other GNOME accent has a
+  palette derived from GNOME's own colour. A desktop without the setting, or
+  with an accent the suite does not know, keeps the lavender.
+- Base has its own icon, a rose database in the same family. Only the start
+  center keeps the Office icon.
+
+## 1.3.0 — An icon for each application
+
+- Writer, Calc, Impress, Draw and Math each have their own launcher icon, in one
+  flat family of overlapping translucent shapes: a blue page, a green grid, an
+  orange slide with a pie chart, golden shapes and a violet radical. Base and the
+  start center keep the Office icon.
+- Both the direct desktop integration and the packaged startup integration use
+  them, in the application menu, on the desktop and in the dock. A module
+  without its own icon falls back to the Office icon.
+- Every icon's generator, prompt and checksums are recorded beside it, and the
+  startup integration refuses an icon that no longer matches its record.
+
+## 1.2.0 — Grouped Home tabs in Writer, Impress and Draw
+
+- Writer, Impress and Draw open with the Home tab grouped like Calc's: a large
+  Paste with icon-only Cut, Copy and Clone, rules between groups, and Find &
+  Select at the right. Each fits a 1440 px window without the overflow chevron.
+  Impress gains a New Slide button. Commands that left Home stay on their own
+  tabs and in the menus: Writer's Insert group, text shadow and character
+  spacing, text direction, vertical text, and the slide show buttons (the small
+  button above Find & Select still starts the show).
+- Each layout is built from the pinned official one. A profile that has its own
+  ribbon for a module keeps it, and a module whose official layout is not the
+  pinned one keeps LibreOffice's own ribbon.
+- Writer's style gallery shows a style name on two lines in full.
+- A command that only reports a state no longer shows an empty check box in
+  menus, and side panel title bars keep their height.
+- The header's line icons and window buttons are drawn at the monitor's scale,
+  so they stay sharp at scale 2.
+- Calc's Home tab keeps only its own rules after a narrow window is widened
+  again, and no longer carries an empty indent group.
+- The rules between groups are one height in every Home tab, Calc's first group
+  is as wide as the other applications', and Calc's Formulas tab is centred in
+  the card. The small buttons above Find & Select start at the group's left
+  edge in Writer, Impress and Draw, as they do in Calc.
+- Draw's fill colour sits in a field like the fill type beside it.
+- A Base window no longer freezes the suite. The header asked Base which of its
+  buttons apply three times a second from a second thread, which Base's
+  controller cannot take: memory was corrupted and every open window stopped.
+  The header now asks on LibreOffice's own main thread, in every application.
+- Command artwork that changed since a profile's first start now shows.
+  LibreOffice keeps each icon it has drawn in the profile and went on showing
+  the old drawing; the launcher now clears those drawings whenever it replaces
+  the icon package. Each profile is refreshed once on its next start.
+- The header's helper process leaves when LibreOffice closes, instead of
+  staying until the next start.
+  When LibreOffice restarts itself in place ("Restart Now" after an option
+  change), the helper waits for it, so the header's buttons work again as soon
+  as it is back.
+- The Zoom & Pan command in Draw and Impress uses the suite's line artwork,
+  as on the small button above Draw's Find & Select.
+- Opening Base first on a new profile no longer ends in a false "Office could
+  not start" message.
+
+## 1.1.0 — One look across the suite
+
+- A suite stylesheet carries the approved Calc design study to every module on
+  the dark desktop: header, tab row, ribbon card, fields, menus, dialogs, lists,
+  side panels, scrollbars and the Start Center. It is loaded for the suite's own
+  launch only; no theme, system file or LibreOffice file changes.
+- Thin line icons for the header's menu, settings and window buttons, and a
+  hairline under the title row.
+- Calc's Home ribbon gains the study's group rules and padding. Impress and
+  Draw open without the duplicate Drawing bar and quick-access bar, and Draw
+  without the classic menu bar; every command stays in the header menu.
+- Page, slide and Start Center wells share one colour. Classic toolbars in
+  Base and Math use the ribbon's small icons. All of these are defaults that a
+  user's own choice overrides.
+- Existing profiles receive the current Calc ribbon on the next closed start,
+  only while the installed ribbon is one this runtime wrote, with a backup.
+- The package now depends on `fonts-inter`.
+- A private visual lab (`scripts/visual_lab.sh`) captures every module, every
+  ribbon tab, menus, a dialog, a save prompt and a narrow window in a headless
+  session.
+
 ## 1.0.0 — Initial release candidate
 
 - Approved Office icon and line-only startup presentation.

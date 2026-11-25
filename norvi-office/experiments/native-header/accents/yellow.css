@@ -1,0 +1,9 @@
+/* GNOME's yellow accent (#c88800); the other colours are derived from it. */
+@define-color accent_deep #c88800;
+@define-color accent #deb866;
+@define-color accent_hover #ce941a;
+@define-color accent_glow #b07907;
+@define-color accent_glow_dim #634a1c;
+@define-color accent_icon #e4c480;
+@define-color accent_icon_light #c88800;
+@define-color accent_band #968c74;
