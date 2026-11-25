@@ -1,5 +1,17 @@
 # Changelog
 
+## 1.3.0 — An icon for each application
+
+- Writer, Calc, Impress, Draw and Math each have their own launcher icon, in one
+  flat family of overlapping translucent shapes: a blue page, a green grid, an
+  orange slide with a pie chart, golden shapes and a violet radical. Base and the
+  start center keep the Office icon.
+- Both the direct desktop integration and the packaged startup integration use
+  them, in the application menu, on the desktop and in the dock. A module
+  without its own icon falls back to the Office icon.
+- Every icon's generator, prompt and checksums are recorded beside it, and the
+  startup integration refuses an icon that no longer matches its record.
+
 ## 1.2.0 — Grouped Home tabs in Writer, Impress and Draw
 
 - Writer, Impress and Draw open with the Home tab grouped like Calc's: a large

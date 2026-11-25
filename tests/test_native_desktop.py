@@ -52,6 +52,24 @@ class NativeDesktopTests(unittest.TestCase):
     def test_original_profile_shortcuts_and_documents_survive_install_edit_protection_and_rollback(self):
         self.exercise_install(False)
 
+    def test_each_application_has_its_own_icon_with_provenance(self):
+        startup = load("startup_icons_test", ROOT / "norvi-office/experiments/startup/integrate.py")
+        assets = ROOT / "norvi-office/experiments/startup/assets"
+        startup.verify_icons(assets)
+        for module in ("writer", "calc", "impress", "draw", "math"):
+            icon = startup.module_icon(assets, module)
+            self.assertEqual(icon, assets / "apps" / f"{module}.png")
+            with open(icon, "rb") as image:
+                self.assertEqual(image.read(8), b"\x89PNG\r\n\x1a\n")
+        for module in ("base", "startcenter"):
+            self.assertEqual(startup.module_icon(assets, module), assets / "office.png")
+        with tempfile.TemporaryDirectory() as directory:
+            copy = Path(directory) / "assets"
+            shutil.copytree(assets, copy)
+            (copy / "apps/draw.png").write_bytes(b"replaced artwork")
+            with self.assertRaises(ValueError):
+                startup.verify_icons(copy)
+
     def test_application_menu_enrollment_omits_new_desktop_copies(self):
         self.exercise_install(False, desktop_shortcuts=False)
 
@@ -144,6 +162,9 @@ class NativeDesktopTests(unittest.TestCase):
                         ("usr/lib/x86_64-linux-gnu/norvi-office/libnorvi-office-header.so", "native module"),
                         ("usr/share/norvi-office/experimental/wayland-glass/extension/metadata.json", '{"uuid":"preview"}'),
                         ("usr/share/norvi-office/experimental/wayland-glass/extension/extension.js", "// compositor"),
+                        ("usr/share/norvi-office/startup/assets/office.png", "suite icon"),
+                        ("usr/share/norvi-office/startup/assets/apps/calc.png", "calc icon"),
+                        ("usr/share/norvi-office/startup/assets/apps/writer.png", "writer icon"),
                     ):
                         path = root / relative
                         path.parent.mkdir(parents=True, exist_ok=True)
@@ -180,6 +201,11 @@ class NativeDesktopTests(unittest.TestCase):
                     installed = target.read_text()
                     self.assertIn("Name=Office Calc", installed)
                     self.assertIn("--desktop --app calc %U", installed)
+                    assets = data / "norvi-office/desktop-runtime" / installer.sha(candidate)[:16] / "usr/share/norvi-office/startup/assets"
+                    self.assertIn(f"Icon={assets / 'apps/calc.png'}\n", installed)
+                    self.assertIn(f"Icon={assets / 'apps/writer.png'}\n", (target.parent / "libreoffice-writer.desktop").read_text())
+                    # A module without its own icon keeps the suite icon.
+                    self.assertIn(f"Icon={assets / 'office.png'}\n", (target.parent / "libreoffice-base.desktop").read_text())
                     self.assertEqual({path.name for path in desktop.glob("Office*.desktop") if "Preview" not in path.name},
                                      {"Office.desktop", "Office Calc.desktop", "Office Writer.desktop", "Office Impress.desktop",
                                       "Office Draw.desktop", "Office Base.desktop", "Office Math.desktop"} if desktop_shortcuts else set())

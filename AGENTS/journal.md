@@ -1,5 +1,19 @@
 # Journal
 
+## 2026-11-25 — An icon for each application
+- The seven module launchers all showed the Office icon. Writer, Calc,
+  Impress, Draw and Math now have their own, 512 px PNGs under
+  `startup/assets/apps/`. Base and the start center keep `office.png`; a
+  module without a file falls back to it, so a runtime from before this change
+  still installs.
+- Writer and Calc came from the local image generator (qwen21); Impress, Draw
+  and Math from the Codex image generation tool, with the first two as the
+  style reference. All five were cut from their backgrounds, centred and saved
+  without metadata. `provenance.json` beside them has each prompt, seed or
+  reference, and the checksums of the original and the shipped file.
+- `startup/integrate.py` now checks the application icons against that record
+  as it already checked the Office icon. Tests cover the icon each launcher
+  gets and a replaced icon being refused.
 ## 2026-11-24 — The menu toggle case expected a message GLib cannot see
 - The first CI run of this branch failed in `test_lifecycle.c`. The
   programmatic toggle case expected GTK's "no trigger event for menu popup"

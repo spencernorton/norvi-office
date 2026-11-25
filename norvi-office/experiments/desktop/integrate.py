@@ -48,6 +48,12 @@ def sha(path):
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def module_icon(assets, app):
+    """Each application's own icon; the suite icon for the start center and Base."""
+    icon = assets / "apps" / f"{app}.png"
+    return icon if icon.is_file() else assets / "office.png"
+
+
 def locations():
     home = Path.home()
     data = Path(os.environ.get("XDG_DATA_HOME", home / ".local/share"))
@@ -102,7 +108,7 @@ def install(candidate, desktop_shortcuts=True):
         else:
             shutil.copytree(staged, root)
     launch = root / "usr/share/norvi-office/experimental/desktop/launch.py"
-    icon = root / "usr/share/norvi-office/startup/assets/office.png"
+    assets = root / "usr/share/norvi-office/startup/assets"
     wrapper = home / ".local/bin/norvi-office"
     remover = home / ".local/bin/norvi-office-native-uninstall"
     payloads = {
@@ -124,7 +130,7 @@ def install(candidate, desktop_shortcuts=True):
             if main and line.startswith("Name="):
                 line = "Name=Office" + (" " + app.title() if app != "startcenter" else "")
             if main and line.startswith("Icon="):
-                line = "Icon=" + str(icon)
+                line = "Icon=" + str(module_icon(assets, app))
             # Existing integrated commands already reference the owned wrapper;
             # fallback upstream actions are rewritten without losing URI fields.
             if line.startswith("Exec=") and "libreoffice" in line and "norvi-office" not in line:

@@ -28,6 +28,21 @@ def quote(value):
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"').replace("`", "\\`").replace("$", "\\$") + '"'
 
 
+def module_icon(assets, module):
+    """Each application's own icon; the suite icon for the start center and Base."""
+    icon = assets / "apps" / f"{module}.png"
+    return icon if icon.is_file() else assets / "office.png"
+
+
+def verify_icons(assets):
+    provenance = json.loads((assets / "provenance.json").read_text())
+    if digest(assets / "office.png") != provenance["sha256"]:
+        raise ValueError("Office icon does not match its provenance")
+    for module, record in json.loads((assets / "apps/provenance.json").read_text()).items():
+        if digest(assets / "apps" / f"{module}.png") != record["sha256"]:
+            raise ValueError(f"The {module} icon does not match its provenance")
+
+
 def desktop(source, module, launcher, icon):
     output = []
     main = False
@@ -68,9 +83,7 @@ def install():
     manifest = root / "manifest.json"
     if root.exists():
         raise ValueError("Startup integration already exists; uninstall it before installing another version")
-    provenance = json.loads((SOURCE / "assets/provenance.json").read_text())
-    if digest(SOURCE / "assets/office.png") != provenance["sha256"]:
-        raise ValueError("Office icon does not match its provenance")
+    verify_icons(SOURCE / "assets")
     packaged = (SOURCE / "package-mode").exists()
     runtime = SOURCE if packaged else root
     launcher, remover = binary / "norvi-office", binary / "norvi-office-uninstall"
@@ -80,7 +93,7 @@ def install():
         target = applications / name
         source = target if target.exists() else Path("/usr/share/applications") / name
         if source.exists():
-            payloads[target] = (desktop(source.read_text(), module, launcher, runtime / "assets/office.png"), 0o644)
+            payloads[target] = (desktop(source.read_text(), module, launcher, module_icon(runtime / "assets", module)), 0o644)
     fallback = ('#!/bin/sh\nif [ -f ' + shlex.quote(str(runtime / "launch.py")) + ' ]; then\n'
                 + '  exec /usr/bin/python3 ' + shlex.quote(str(runtime / "launch.py")) + ' "$@"\nfi\n'
                 + '[ "${1:-}" = --desktop ] || exit 2\nshift\n'

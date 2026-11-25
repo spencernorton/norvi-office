@@ -4,8 +4,9 @@ A maintained presentation and integration layer for LibreOffice on Ubuntu 26.04.
 The official LibreOffice engine stays unmodified. Ubuntu supplies engine and
 security updates; the signed Norvi APT channel supplies our UI updates.
 
-The initial package provides the approved Office icon and line-only loading
-prompt, a configuration extension and dormant experimental native glass components.
+The package provides the approved Office icon, an icon for each of Writer, Calc,
+Impress, Draw and Math, a line-only loading prompt, a configuration extension and
+dormant experimental native glass components.
 The source release includes the complete qualification harness. The glass adapter is qualified against
 LibreOffice 26.2.6.3 and GNOME 50 only and is not enabled by normal launches.
 
@@ -152,4 +153,5 @@ compatibility gates. No background job changes the user's document profile.
 
 LibreOffice is a project of The Document Foundation. This is an independent UI
 layer. Original licenses and upstream branding are retained. The Sifr icon theme remains owned and licensed by its upstream APT package. The generated Office
-icon's prompt, model, seed and checksum are included beside its source PNG.
+icon's prompt, model, seed and checksum are included beside its source PNG, and
+each application icon's generator, prompt and checksums are in `assets/apps/provenance.json`.

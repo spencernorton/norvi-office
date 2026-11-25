@@ -1,0 +1,70 @@
+{
+  "writer": {
+    "generator": "GE image generation API",
+    "model": "qwen21",
+    "seed": 5501,
+    "steps": 25,
+    "job_id": "23b1215a05be4a8db529167c687d47da",
+    "batch_index": 0,
+    "size": [
+      1024,
+      1024
+    ],
+    "prompt": "Flat vector app icon, modern minimalist geometric logo design. Built only from a few simple overlapping semi-transparent rounded shapes in flat solid colors; wherever two shapes overlap, the overlap area is a distinctly darker, more saturated blended color, like overlapping sheets of colored glass. Perfectly crisp edges and smooth rounded corners. The icon represents a text document: a tall rounded-rectangle page divided into flat horizontal color bands, pale cyan at the top, then sky blue, then azure, then deep royal blue at the bottom, with a second translucent rounded-rectangle page behind it offset to the upper right, and three short horizontal rounded bars of different lengths on the page like lines of text. Palette: pale cyan, sky blue, azure, royal blue, navy. No gradients, no shading, no 3D, no shadows, no outlines, no text, no letters. One single centered icon on a plain pure white background with wide empty margins.",
+    "processing": "Near-white background connected to the border made transparent with white removed from edge pixels; cropped and centred on a square canvas with a 3% margin; resized to 512 px; ancillary PNG metadata removed",
+    "original_sha256": "2ba52c9d6eb5214534aa947f91d9313caae41692019b967cf45d038c26465400",
+    "sha256": "330cda66a2df85194099cdd02f039e34cba7e7807c43bf3ef0a0ba0f6041bee3"
+  },
+  "calc": {
+    "generator": "GE image generation API",
+    "model": "qwen21",
+    "seed": 5502,
+    "steps": 25,
+    "job_id": "536480f690784942ad46027ed0e126b0",
+    "batch_index": 0,
+    "size": [
+      1024,
+      1024
+    ],
+    "prompt": "Flat vector app icon, modern minimalist geometric logo design. Built only from a few simple overlapping semi-transparent rounded shapes in flat solid colors; wherever two shapes overlap, the overlap area is a distinctly darker, more saturated blended color, like overlapping sheets of colored glass. Perfectly crisp edges and smooth rounded corners. The icon represents a spreadsheet: a rounded square divided into a simple 3 by 3 grid of square cells in different flat greens, with one translucent horizontal row band and one translucent vertical column band crossing each other, and the single cell where the row and column intersect is the darkest green. Palette: bright lime, light green, emerald green, teal, dark forest green. No gradients, no shading, no 3D, no shadows, no outlines, no text, no letters, no numbers. One single centered icon on a plain pure white background with wide empty margins.",
+    "processing": "Near-white background connected to the border made transparent with white removed from edge pixels; cropped and centred on a square canvas with a 3% margin; resized to 512 px; ancillary PNG metadata removed",
+    "original_sha256": "64e3730a79beef31a2432087689d264fd55cdff0212405fbf21f5491f2e27ee9",
+    "sha256": "0619ff4305fbc6cfc39bbbe6d5b0cd163412c867b8d7eed9f1dc76d7ff78852e"
+  },
+  "impress": {
+    "generator": "Codex image generation tool",
+    "size": [
+      1254,
+      1254
+    ],
+    "reference": "A preview of this set's Writer, Calc and an earlier Impress candidate, used for design language",
+    "prompt": "Design one original flat Linux launcher icon for Norvi Office Impress, a presentation and slideshow app. Use the attached blue Writer, green Calc and orange Impress set as the reference for crisp generous curves and solid translucent-looking color intersections. Refine the orange concept into a compact nearly square silhouette with the same optical size as Calc: a distinct orange rounded slide card rising slightly at its upper left behind a large coral-red pie chart toward the lower right. The pie is a bold continuous disc with one bright tangerine quarter; the orange card peeks out around the top and left, still clearly visible. Keep the overlap in a richer orange-red. Geometric and very simple, three or four large color regions, no outlines, text, legs, frames, other icons, gloss, lighting, or drop shadow. No existing brand logos. One centered artwork on a genuinely transparent square canvas, generous blank margin, legible at 24 pixels.",
+    "processing": "Alpha kept to the connected artwork; fitted to 942 px centred on a 1024 px canvas; resized to 512 px; ancillary PNG metadata removed",
+    "original_sha256": "1e646b87628ec46dfac43247be9f2390ffa37e3ece334d2518e761b4dd066be6",
+    "sha256": "9e7ae17774800efb7ab41d2bdd62be6eacc93896f483498181ec31154deb5943"
+  },
+  "draw": {
+    "generator": "Codex image generation tool",
+    "size": [
+      1254,
+      1254
+    ],
+    "reference": "A preview of this set's Writer, Calc and an earlier Impress candidate, used for design language",
+    "prompt": "Create exactly ONE original Norvi Office Linux launcher app icon as a 1024 square transparent PNG. Use the attached set solely for its design language: bold continuous flat geometric shapes, large rounded corners, rich layered color intersections, no outline, very slight tonal changes at most. Make its optical size align with the reference Calc icon and fill about 80% of the canvas. One compact connected silhouette, legible at 24 pixels. Genuinely transparent empty space around the isolated icon, no colored backdrop, no text labels, no frame, no extra icons, no shadows, no 3D, no gloss. Do not copy any existing branded logo. For vector editor Draw: a composition of three simple overlapping geometric shapes, a rounded yellow square behind, a large warm saffron circle toward upper right, and a rounded honey-gold triangular wedge in the lower left. Nearly square compact silhouette, large smooth corners, connected forms, deep amber overlap regions and golden-yellow highlights; avoid orange-red so it's clearly distinct from the orange/coral Impress icon. No pens, gradients, or small details.",
+    "processing": "Alpha kept to the connected artwork; fitted to 942 px centred on a 1024 px canvas; resized to 512 px; ancillary PNG metadata removed",
+    "original_sha256": "537f4c2eb27567e94044c998aeb533d6af06d7e9e3cb382e55f9dfe6fbbeb224",
+    "sha256": "e333e09b75bcb8918c7cc76ab0d0ac75eeeac2c5e6a18382f2512905003aa052"
+  },
+  "math": {
+    "generator": "Codex image generation tool",
+    "size": [
+      1254,
+      1254
+    ],
+    "reference": "A preview of this set's Writer, Calc and an earlier Impress candidate, used for design language",
+    "prompt": "Create exactly ONE original Norvi Office Linux launcher app icon as a 1024 square transparent PNG. Use the attached set solely for its design language: bold continuous flat geometric shapes, large rounded corners, rich layered color intersections, no outline, very slight tonal changes at most. Make its optical size align with the reference Calc icon and fill about 80% of the canvas. One compact connected silhouette, legible at 24 pixels. Genuinely transparent empty space around the isolated icon, no colored backdrop, no text labels, no frame, no extra icons, no shadows, no 3D, no gloss. Do not copy any existing branded logo. For the formula editor Math: a bold, instantly recognizable radical (square-root sign) made of one wide continuous lavender folded-looking ribbon with a purple intersection, laid over a deeper violet rounded tile offset a little to the lower right. The radical's long top bar is unbroken and its right end is blunt; the check-like bottom bend is clearly visible. Three coordinated solid purples, no other letters or symbols. Friendly broad corner radii.",
+    "processing": "Alpha kept to the connected artwork; fitted to 942 px centred on a 1024 px canvas; resized to 512 px; ancillary PNG metadata removed",
+    "original_sha256": "538172f383ba573ca1b53ce1a6bf748c6799878d7866ae2be54ff1c3f67d6d0d",
+    "sha256": "393d41abca30ee045da0b15413b019333c1a53867ce26868ae7ac12764c641ba"
+  }
+}
