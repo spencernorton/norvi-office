@@ -25,6 +25,7 @@ sys.path.insert(0, str(HEADER))
 from uno_utils import connect, prop, stop_office  # noqa: E402
 import calc_ribbon  # noqa: E402
 from calc_ribbon import prepare, preview_package, SHORTCUTS  # noqa: E402
+import accents  # noqa: E402
 
 APPS = ("writer", "calc", "impress", "draw", "base", "math", "startcenter")
 
@@ -58,8 +59,11 @@ def command(app, files, profile=None, pipe=None):
     return args
 
 
-def presentation_revision():
-    """Hash inputs, ignoring ZIP timestamps and ordering from package builds."""
+def presentation_revision(accent=accents.DEFAULT):
+    """Hash inputs, ignoring ZIP timestamps and ordering from package builds.
+
+    The accent is an input: a new desktop accent refreshes the tinted icons.
+    """
     # v2: a refresh also clears the engine's rendered icons, so each profile refreshes once more.
     digest = sha256(b"norvi-desktop-presentation-v2\0")
 
@@ -69,6 +73,7 @@ def presentation_revision():
             digest.update(value)
 
     add("calc_ribbon.py", (HEADER / "calc_ribbon.py").read_bytes())
+    add("accent", json.dumps(accents.colours(accent), sort_keys=True).encode())
     for name, path in (("preset", SHARE / "extensions/NorviGlass.oxt"),
                        ("official-icons", calc_ribbon.SYSTEM_ICONS)):
         with ZipFile(path) as archive:
@@ -192,7 +197,8 @@ def refresh_presentation(root, profile, env, record):
         return
     package = root / "NorviDesktop.oxt"
     previous = owned_package(package, record.get("presentation_package_sha256"))
-    revision = presentation_revision()
+    accent = env.get("NORVI_OFFICE_ACCENT") or accents.DEFAULT
+    revision = presentation_revision(accent)
     if record.get("presentation_revision") == revision:
         return
     backup = root / ("NorviDesktop.backup-" + previous + ".oxt")
@@ -201,7 +207,7 @@ def refresh_presentation(root, profile, env, record):
     with tempfile.TemporaryDirectory(prefix=".presentation-refresh-", dir=root) as temporary:
         staging = Path(temporary)
         candidate = staging / "NorviDesktop.oxt"
-        preview_package(SHARE / "extensions/NorviGlass.oxt", candidate)
+        preview_package(SHARE / "extensions/NorviGlass.oxt", candidate, accent=accent)
         current = owned_package(candidate)
         marker = staging / "profile-ready.json"
         if profile_live(root, profile):
@@ -258,8 +264,9 @@ def initialize(root, env):
     package = root / "NorviDesktop.oxt"
     if package.exists() or package.is_symlink():
         raise ValueError("An unfinished Norvi presentation package exists; preserved it for recovery")
-    revision = presentation_revision()
-    preview_package(SHARE / "extensions/NorviGlass.oxt", package)
+    accent = env.get("NORVI_OFFICE_ACCENT") or accents.DEFAULT
+    revision = presentation_revision(accent)
+    preview_package(SHARE / "extensions/NorviGlass.oxt", package, accent=accent)
     subprocess.run(["unopkg", "add", "-env:UserInstallation=" + profile.as_uri(), str(package)], env=env, check=True)
     prepare(profile, native=True, environment=env)
     quiet_shortcuts(profile)
@@ -358,8 +365,11 @@ def launch(app, files):
         env = dict(os.environ)
         for key in ("NORVI_OFFICE_TEST_DIR", "GTK3_MODULES", "GTK_MODULES", "AT_SPI_BUS_ADDRESS"):
             env.pop(key, None)
+        # The desktop accent picks the matching dark theme; the header keeps the
+        # suite colours in step with later changes while Office runs.
+        accent = accents.current()
         env.update(NORVI_OFFICE_SESSION_DIR=str(root), SAL_USE_VCLPLUGIN="gtk3", GDK_BACKEND="wayland",
-                   GTK_THEME="Yaru-purple-dark", NORVI_OFFICE_CALC_RIBBON="1")
+                   GTK_THEME=accents.theme(accent), NORVI_OFFICE_ACCENT=accent, NORVI_OFFICE_CALC_RIBBON="1")
         marker = root / "native-session.json"
         if not marker.exists():
             marker.write_text(json.dumps({"mode": "desktop", "token": secrets.token_hex(32)}) + "\n")

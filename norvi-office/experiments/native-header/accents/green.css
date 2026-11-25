@@ -1,0 +1,8 @@
+/* GNOME's green accent (#3a944a); the other colours are derived from it. */
+@define-color accent_deep #3a944a;
+@define-color accent #89bf92;
+@define-color accent_hover #4e9f5c;
+@define-color accent_glow #378346;
+@define-color accent_glow_dim #2d4f38;
+@define-color accent_icon #9ccaa4;
+@define-color accent_icon_light #3a944a;

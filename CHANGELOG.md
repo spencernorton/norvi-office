@@ -1,5 +1,19 @@
 # Changelog
 
+## 1.4.0 — The desktop accent colour, and a Base icon
+
+- The suite follows the accent colour chosen in Settings. It was always purple:
+  the launcher fixed the GTK theme to Yaru purple and the stylesheet fixed the
+  lavender accent. Selection, the active tab's underline, default buttons,
+  check boxes, the caret and the glow behind the header and ribbon now take the
+  desktop accent, and change while the suite is open. The matching dark Yaru
+  theme and the ribbon icons drawn in the accent follow at the next start.
+- Purple keeps the approved lavender exactly; every other GNOME accent has a
+  palette derived from GNOME's own colour. A desktop without the setting, or
+  with an accent the suite does not know, keeps the lavender.
+- Base has its own icon, a rose database in the same family. Only the start
+  center keeps the Office icon.
+
 ## 1.3.0 — An icon for each application
 
 - Writer, Calc, Impress, Draw and Math each have their own launcher icon, in one

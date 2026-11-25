@@ -13,8 +13,13 @@
 @define-color chrome #25242d;
 @define-color ink #f2eff8;
 @define-color quiet #aaa4b7;
+/* Accent defaults: the approved lavender. accents/<name>.css replaces them with
+ * the desktop's accent colour and is reloaded when that setting changes. */
 @define-color accent #b49af4;
 @define-color accent_deep #7456c3;
+@define-color accent_hover #8266d2;
+@define-color accent_glow #6b55a0;
+@define-color accent_glow_dim #454066;
 @define-color hairline rgba(255, 255, 255, 0.11);
 @define-color rule rgba(255, 255, 255, 0.14);
 @define-color field rgba(255, 255, 255, 0.05);
@@ -55,8 +60,8 @@ headerbar.norvi-office-header {
   background-color: @chrome;
   background-image:
     linear-gradient(rgba(255, 255, 255, 0.07), rgba(255, 255, 255, 0.07)),
-    radial-gradient(ellipse 32% 300px at 39% -22px, rgba(107, 85, 160, 0.62), transparent 87%),
-    radial-gradient(ellipse 27% 338px at 83% 282px, rgba(69, 64, 102, 0.6), transparent 85%);
+    radial-gradient(ellipse 32% 300px at 39% -22px, alpha(@accent_glow, 0.62), transparent 87%),
+    radial-gradient(ellipse 27% 338px at 83% 282px, alpha(@accent_glow_dim, 0.6), transparent 85%);
   /* The first layer is a hairline under the title row. */
   background-size: 96% 1px, auto, auto;
   background-position: center bottom, 0 0, 0 0;
@@ -72,21 +77,21 @@ headerbar:not(.norvi-office-header) {
 notebook:not(:nth-child(odd)):not(:nth-child(even)) > header {
   background-color: @chrome;
   background-image:
-    radial-gradient(ellipse 32% 300px at 39% -69px, rgba(107, 85, 160, 0.62), transparent 87%),
-    radial-gradient(ellipse 27% 338px at 83% 235px, rgba(69, 64, 102, 0.6), transparent 85%);
+    radial-gradient(ellipse 32% 300px at 39% -69px, alpha(@accent_glow, 0.62), transparent 87%),
+    radial-gradient(ellipse 27% 338px at 83% 235px, alpha(@accent_glow_dim, 0.6), transparent 85%);
 }
 notebook:not(:nth-child(odd)):not(:nth-child(even)) {
   background-color: @chrome;
   background-image:
-    radial-gradient(ellipse 32% 300px at 39% -106px, rgba(107, 85, 160, 0.62), transparent 87%),
-    radial-gradient(ellipse 27% 338px at 83% 198px, rgba(69, 64, 102, 0.6), transparent 85%);
+    radial-gradient(ellipse 32% 300px at 39% -106px, alpha(@accent_glow, 0.62), transparent 87%),
+    radial-gradient(ellipse 27% 338px at 83% 198px, alpha(@accent_glow_dim, 0.6), transparent 85%);
 }
 /* Modules without a ribbon: the glow fades out across the menu bar row. */
 window.csd > grid > grid {
   background-image:
     linear-gradient(to bottom, alpha(@chrome, 0), @chrome),
-    radial-gradient(ellipse 32% 300px at 39% -69px, rgba(107, 85, 160, 0.62), transparent 87%),
-    radial-gradient(ellipse 27% 338px at 83% 235px, rgba(69, 64, 102, 0.6), transparent 85%);
+    radial-gradient(ellipse 32% 300px at 39% -69px, alpha(@accent_glow, 0.62), transparent 87%),
+    radial-gradient(ellipse 27% 338px at 83% 235px, alpha(@accent_glow_dim, 0.6), transparent 85%);
 }
 
 headerbar.norvi-office-header .title { font-size: 10.5pt; font-weight: 600; color: @ink; }
@@ -225,7 +230,7 @@ button:not(.titlebutton):active,
 button:not(.titlebutton):checked { background-color: #474453; }
 button:not(.titlebutton):disabled { border-color: rgba(255, 255, 255, 0.07); color: @quiet; }
 button.default { border-color: transparent; background-color: @accent_deep; color: #ffffff; }
-button.default:hover { background-color: #8266d2; }
+button.default:hover { background-color: @accent_hover; }
 /* Prompt buttons run edge to edge, as the desktop theme draws them. */
 messagedialog.csd .dialog-action-area button {
   border-style: solid none none solid;

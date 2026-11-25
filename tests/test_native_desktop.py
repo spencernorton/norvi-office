@@ -56,13 +56,12 @@ class NativeDesktopTests(unittest.TestCase):
         startup = load("startup_icons_test", ROOT / "norvi-office/experiments/startup/integrate.py")
         assets = ROOT / "norvi-office/experiments/startup/assets"
         startup.verify_icons(assets)
-        for module in ("writer", "calc", "impress", "draw", "math"):
+        for module in ("writer", "calc", "impress", "draw", "base", "math"):
             icon = startup.module_icon(assets, module)
             self.assertEqual(icon, assets / "apps" / f"{module}.png")
             with open(icon, "rb") as image:
                 self.assertEqual(image.read(8), b"\x89PNG\r\n\x1a\n")
-        for module in ("base", "startcenter"):
-            self.assertEqual(startup.module_icon(assets, module), assets / "office.png")
+        self.assertEqual(startup.module_icon(assets, "startcenter"), assets / "office.png")
         with tempfile.TemporaryDirectory() as directory:
             copy = Path(directory) / "assets"
             shutil.copytree(assets, copy)

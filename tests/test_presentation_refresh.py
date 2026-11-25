@@ -306,6 +306,33 @@ class PresentationRefreshTests(unittest.TestCase):
             self.assertEqual(ready.read_bytes(), marker)
             self.assertEqual(next(root.glob("NorviDesktop.backup-*.oxt")).read_bytes(), old)
 
+    def test_a_new_desktop_accent_retints_the_icons_once(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            launch, root, _profile, _retained, installed, install = fixture(Path(temporary))
+            package, ready = root / "NorviDesktop.oxt", root / "profile-ready.json"
+            self.assertEqual(launch.presentation_revision("purple"), launch.presentation_revision())
+            self.assertEqual(launch.presentation_revision("not-an-accent"), launch.presentation_revision())
+            self.assertNotEqual(launch.presentation_revision("orange"), launch.presentation_revision())
+            orange = launch.accents.colours("orange")["accent_icon"]
+            with patch.object(launch, "profile_live", return_value=False), \
+                    patch.object(launch.subprocess, "run", side_effect=install) as run, \
+                    patch.object(launch, "prepare"), patch.object(launch, "connect"):
+                launch.initialize(root, {"NORVI_OFFICE_ACCENT": "orange"})
+                self.assertEqual(run.call_count, 1)
+                self.assertEqual(installed.read_bytes(), package.read_bytes())
+                with ZipFile(package) as archive, ZipFile(BytesIO(archive.read("iconsets/images_sifr_dark_svg.zip"))) as theme:
+                    self.assertIn(f'stroke="{orange}"'.encode(), theme.read("cmd/lc_conditionalformatmenu.svg"))
+                    self.assertIn(b'stroke="#f2eff8"', theme.read("cmd/lc_bold.svg"))
+                record = json.loads(ready.read_text())
+                self.assertEqual(record["presentation_revision"], launch.presentation_revision("orange"))
+                # The same accent again changes nothing; another one refreshes once more.
+                launch.initialize(root, {"NORVI_OFFICE_ACCENT": "orange"})
+                self.assertEqual(run.call_count, 1)
+                launch.initialize(root, {"NORVI_OFFICE_ACCENT": "blue"})
+                self.assertEqual(run.call_count, 2)
+                record = json.loads(ready.read_text())
+                self.assertEqual(record["presentation_revision"], launch.presentation_revision("blue"))
+
     def test_revision_is_reproducible_but_changes_with_each_presentation_input(self):
         with tempfile.TemporaryDirectory() as temporary:
             launch, _root, _profile, _retained, _installed, _install = fixture(Path(temporary))

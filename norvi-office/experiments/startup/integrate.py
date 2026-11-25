@@ -29,7 +29,7 @@ def quote(value):
 
 
 def module_icon(assets, module):
-    """Each application's own icon; the suite icon for the start center and Base."""
+    """Each application's own icon; the suite icon for the start center or a module without one."""
     icon = assets / "apps" / f"{module}.png"
     return icon if icon.is_file() else assets / "office.png"
 

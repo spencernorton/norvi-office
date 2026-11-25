@@ -5,7 +5,7 @@ The official LibreOffice engine stays unmodified. Ubuntu supplies engine and
 security updates; the signed Norvi APT channel supplies our UI updates.
 
 The package provides the approved Office icon, an icon for each of Writer, Calc,
-Impress, Draw and Math, a line-only loading prompt, a configuration extension and
+Impress, Draw, Base and Math, a line-only loading prompt, a configuration extension and
 dormant experimental native glass components.
 The source release includes the complete qualification harness. The glass adapter is qualified against
 LibreOffice 26.2.6.3 and GNOME 50 only and is not enabled by normal launches.
@@ -63,6 +63,12 @@ Calc, Impress, Draw, Base, Math and the Office start center. When replacing a
 managed design preview, it retires only unchanged preview shortcuts. Open
 preview applications, their runtimes and documents are preserved. Uninstalling
 the native integration restores those preceding shortcuts.
+
+The suite follows the desktop's accent colour (Settings → Appearance). Selection,
+the active tab, default buttons and the glow behind the header change as soon as
+the accent does. The matching dark GTK theme and the few ribbon icons drawn in
+the accent follow at the next start of the suite. Purple is the original
+Norvi lavender, also used when the desktop has no accent setting.
 
 The current direct-host source keeps application pixels opaque. Native
 compositor masking and experimental client alpha are disabled while matching

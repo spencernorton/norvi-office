@@ -1,5 +1,7 @@
 #include "header.c"
 #include <gtk/gtk-a11y.h>
+#define G_SETTINGS_ENABLE_BACKEND
+#include <gio/gsettingsbackend.h>
 
 typedef struct { GtkWindowAccessible parent; } ClosingAccessible;
 typedef struct { GtkWindowAccessibleClass parent; } ClosingAccessibleClass;
@@ -334,6 +336,59 @@ static void menu_anchor_notification_closes_owner(void) {
     g_object_unref(window);
 }
 
+static void assert_background(GtkWidget *widget, const char *expected) {
+    while (g_main_context_iteration(NULL, FALSE)) {}
+    GdkRGBA *color = NULL;
+    gtk_style_context_get(gtk_widget_get_style_context(widget), GTK_STATE_FLAG_NORMAL,
+                          "background-color", &color, NULL);
+    gchar *actual = g_strdup_printf("#%02x%02x%02x", (int)(color->red * 255 + .5),
+                                    (int)(color->green * 255 + .5), (int)(color->blue * 255 + .5));
+    g_assert_cmpstr(actual, ==, expected);
+    g_free(actual);
+    gdk_rgba_free(color);
+}
+
+/* The suite's accent follows the desktop setting at start and when it changes. */
+static void accent_follows_desktop_setting(void) {
+    GSettingsSchemaSource *source = g_settings_schema_source_get_default();
+    g_assert_nonnull(source);
+    GSettingsSchema *schema = g_settings_schema_source_lookup(source, "org.gnome.desktop.interface", TRUE);
+    g_assert_nonnull(schema);
+    g_assert_true(g_settings_schema_has_key(schema, "accent-color"));
+    g_settings_schema_unref(schema);
+    GSettingsBackend *backend = g_memory_settings_backend_new();
+    GSettings *settings = g_settings_new_with_backend("org.gnome.desktop.interface", backend);
+    g_assert_true(g_settings_set_string(settings, "accent-color", "orange"));
+    gchar *folder = g_path_get_dirname(__FILE__);
+    gchar *sheet = g_build_filename(folder, "office.css", NULL);
+    GtkCssProvider *suite = gtk_css_provider_new();
+    g_assert_true(gtk_css_provider_load_from_path(suite, sheet, NULL));
+    GdkScreen *screen = gdk_screen_get_default();
+    gtk_style_context_add_provider_for_screen(screen, GTK_STYLE_PROVIDER(suite), GTK_STYLE_PROVIDER_PRIORITY_USER + 2);
+    GtkWidget *window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+    GtkWidget *button = gtk_button_new_with_label("OK");
+    gtk_style_context_add_class(gtk_widget_get_style_context(button), "default");
+    gtk_container_add(GTK_CONTAINER(window), button);
+    assert_background(button, "#7456c3");
+    accent_install(settings, sheet);
+    assert_background(button, "#ed5b00");
+    g_assert_true(g_settings_set_string(settings, "accent-color", "blue"));
+    assert_background(button, "#3584e4");
+    g_assert_true(g_settings_set_string(settings, "accent-color", "purple"));
+    assert_background(button, "#7456c3");
+    g_signal_handlers_disconnect_by_func(settings, accent_changed, NULL);
+    gtk_style_context_remove_provider_for_screen(screen, GTK_STYLE_PROVIDER(accent_provider));
+    gtk_style_context_remove_provider_for_screen(screen, GTK_STYLE_PROVIDER(suite));
+    g_clear_object(&accent_provider);
+    g_clear_pointer(&accent_directory, g_free);
+    gtk_widget_destroy(window);
+    g_object_unref(suite);
+    g_object_unref(settings);
+    g_object_unref(backend);
+    g_free(sheet);
+    g_free(folder);
+}
+
 int main(int argc, char **argv) {
     g_test_init(&argc, &argv, NULL);
     /* Missing display is a failed native check, never a successful skip. */
@@ -350,5 +405,6 @@ int main(int argc, char **argv) {
     g_test_add_func("/native-header/lifecycle/queued-menu-click-teardown", queued_menu_click_during_owner_teardown);
     g_test_add_func("/native-header/lifecycle/menu-toggle-state-destroy", menu_toggle_state_closes_owner);
     g_test_add_func("/native-header/lifecycle/menu-anchor-notify-destroy", menu_anchor_notification_closes_owner);
+    g_test_add_func("/native-header/lifecycle/accent-follows-setting", accent_follows_desktop_setting);
     return g_test_run();
 }

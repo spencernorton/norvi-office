@@ -1,0 +1,8 @@
+/* GNOME's pink accent (#d56199); the other colours are derived from it. */
+@define-color accent_deep #d56199;
+@define-color accent #e6a0c2;
+@define-color accent_hover #d971a3;
+@define-color accent_glow #bb5889;
+@define-color accent_glow_dim #683b56;
+@define-color accent_icon #eab0cc;
+@define-color accent_icon_light #d56199;

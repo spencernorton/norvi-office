@@ -1,5 +1,27 @@
 # Journal
 
+## 2026-11-25 — The suite follows the desktop accent; Base icon
+- Reported on the real desktop: changing the accent in Settings left the
+  suite purple. Two causes, both by construction: `desktop/launch.py` set
+  `GTK_THEME=Yaru-purple-dark` for every launch, and `office.css` defined the
+  lavender accent and wrote the glow and default-button hover as fixed colours.
+- `native-header/accents/<name>.css` now holds one palette per GNOME accent:
+  purple is the design study's lavender, byte for byte; the others derive from
+  libadwaita's accent colour by the rule in `tests/test_accents.py`.
+  `office.css` keeps the lavender as its defaults and names every accent use.
+  The header loads the current palette at USER+3, above the sheet, and reloads
+  it on `changed::accent-color`, so GTK restyles the open suite. It connects
+  before the first read, because GSettings only signals keys read afterwards.
+- The launcher reads the accent through GIO, not a `gsettings` subprocess,
+  which tests patch. It picks the nearest dark Yaru theme (Yaru has no slate)
+  and passes the accent to the ribbon icon package. The accent is part of the
+  presentation revision, so a new accent re-tints those icons once, at the next
+  start with the profile closed, through the existing refresh and rollback.
+- Checked under Xvfb that a later provider's `@define-color` replaces the
+  sheet's for the sheet's own rules, and that reloading it restyles: the new
+  lifecycle case reads the computed colour of a default button through
+  orange, blue and purple. CI installs `gsettings-desktop-schemas` for it.
+- Base has its own icon, from the local generator like Writer and Calc.
 ## 2026-11-25 — An icon for each application
 - The seven module launchers all showed the Office icon. Writer, Calc,
   Impress, Draw and Math now have their own, 512 px PNGs under

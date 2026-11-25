@@ -3,6 +3,7 @@
 #include <gtk/gtk.h>
 #include <gmodule.h>
 #include <gdk/gdkwayland.h>
+#include <string.h>
 #include <unistd.h>
 #include "glass_pixels.h"
 
@@ -164,6 +165,56 @@ static GtkWidget *header_menu_new(void) {
 }
 
 static GSettings *popup_settings, *interface_settings, *contrast_settings;
+
+/* The desktop accent colour. accents/<name>.css beside the suite sheet defines
+ * the sheet's accent colours; it is loaded above the sheet, so its definitions
+ * win, and reloaded when the setting changes. GTK restyles every widget on a
+ * reload, and LibreOffice reads its colours back from GTK. An unknown accent or
+ * a desktop without the setting leaves the sheet's own colours. */
+static GtkCssProvider *accent_provider;
+static gchar *accent_directory;
+
+static gchar *accent_name(GSettings *settings) {
+    GSettingsSchema *schema = NULL;
+    g_object_get(settings, "settings-schema", &schema, NULL);
+    gchar *name = schema && g_settings_schema_has_key(schema, "accent-color") ?
+        g_settings_get_string(settings, "accent-color") : NULL;
+    if (schema)
+        g_settings_schema_unref(schema);
+    /* Only a plain lower-case name becomes part of a path. */
+    if (name && (!*name || strspn(name, "abcdefghijklmnopqrstuvwxyz") != strlen(name)))
+        g_clear_pointer(&name, g_free);
+    return name;
+}
+
+static void accent_load(GSettings *settings) {
+    gchar *name = accent_name(settings);
+    gchar *path = name ? g_strdup_printf("%s/%s.css", accent_directory, name) : NULL;
+    if (!path || !g_file_test(path, G_FILE_TEST_IS_REGULAR) ||
+            !gtk_css_provider_load_from_path(accent_provider, path, NULL))
+        gtk_css_provider_load_from_data(accent_provider, "", -1, NULL);
+    g_free(path);
+    g_free(name);
+}
+
+static void accent_changed(GSettings *settings, gchar *key, gpointer data) {
+    (void)key;
+    (void)data;
+    accent_load(settings);
+}
+
+static void accent_install(GSettings *settings, const char *sheet) {
+    gchar *folder = g_path_get_dirname(sheet);
+    accent_directory = g_build_filename(folder, "accents", NULL);
+    g_free(folder);
+    accent_provider = gtk_css_provider_new();
+    /* GSettings signals a change only for a key read after connecting. */
+    g_signal_connect(settings, "changed::accent-color", G_CALLBACK(accent_changed), NULL);
+    accent_load(settings);
+    gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
+        GTK_STYLE_PROVIDER(accent_provider), GTK_STYLE_PROVIDER_PRIORITY_USER + 3);
+}
+
 static const char *token;
 static const char *broker_name;
 static gboolean native_desktop;
@@ -1136,9 +1187,11 @@ G_MODULE_EXPORT void gtk_module_init(gint *argc, gchar ***argv) {
     const char *sheet = g_getenv("NORVI_OFFICE_STYLE");
     if (sheet && g_file_test(sheet, G_FILE_TEST_IS_REGULAR)) {
         GtkCssProvider *suite = gtk_css_provider_new();
-        if (gtk_css_provider_load_from_path(suite, sheet, NULL))
+        if (gtk_css_provider_load_from_path(suite, sheet, NULL)) {
             gtk_style_context_add_provider_for_screen(gdk_screen_get_default(),
                 GTK_STYLE_PROVIDER(suite), GTK_STYLE_PROVIDER_PRIORITY_USER + 2);
+            accent_install(interface_settings, sheet);
+        }
         g_object_unref(suite);
     }
     g_type_class_ref(GTK_TYPE_WIDGET);

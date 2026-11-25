@@ -66,5 +66,21 @@
     "processing": "Alpha kept to the connected artwork; fitted to 942 px centred on a 1024 px canvas; resized to 512 px; ancillary PNG metadata removed",
     "original_sha256": "538172f383ba573ca1b53ce1a6bf748c6799878d7866ae2be54ff1c3f67d6d0d",
     "sha256": "393d41abca30ee045da0b15413b019333c1a53867ce26868ae7ac12764c641ba"
+  },
+  "base": {
+    "generator": "GE image generation API",
+    "model": "qwen21",
+    "seed": 6601,
+    "steps": 25,
+    "job_id": "b368d72e06c145448579be7ef8d3c91c",
+    "batch_index": 1,
+    "size": [
+      1024,
+      1024
+    ],
+    "prompt": "Flat vector app icon, modern minimalist geometric logo design. Built only from a few simple overlapping semi-transparent rounded shapes in flat solid colors; wherever two shapes overlap, the overlap area is a distinctly darker, more saturated blended color, like overlapping sheets of colored glass. Perfectly crisp edges and smooth rounded corners. The icon represents a database: three wide flat rounded discs stacked vertically like a database cylinder, each disc a slightly different flat shade, with a translucent rounded-rectangle table card overlapping the lower right of the stack; the area where the card and the discs overlap is a deep darker rose. Palette: light pink, rose pink, magenta, deep raspberry, dark crimson purple. Bold and simple, very few details. No gradients, no shading, no 3D, no shadows, no outlines, no text, no letters, no numbers. One single centered icon on a plain pure white background with wide empty margins.",
+    "processing": "Near-white background connected to the border made transparent with white removed from edge pixels; cropped and centred on a square canvas with a 3% margin; resized to 512 px; ancillary PNG metadata removed",
+    "original_sha256": "1491009784d519ee34b4a09504bee209bcfa0b7475d6027d4214523e46879ed0",
+    "sha256": "f2de81f9c5882d53c3b54835737ffb098a8a99bbf4c710ee47ca052d26208d69"
   }
 }

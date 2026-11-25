@@ -49,7 +49,7 @@ def sha(path):
 
 
 def module_icon(assets, app):
-    """Each application's own icon; the suite icon for the start center and Base."""
+    """Each application's own icon; the suite icon for the start center or a module without one."""
     icon = assets / "apps" / f"{app}.png"
     return icon if icon.is_file() else assets / "office.png"
 

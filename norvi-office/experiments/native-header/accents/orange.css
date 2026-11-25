@@ -1,0 +1,8 @@
+/* GNOME's orange accent (#ed5b00); the other colours are derived from it. */
+@define-color accent_deep #ed5b00;
+@define-color accent #f49d66;
+@define-color accent_hover #ef6b1a;
+@define-color accent_glow #cf5307;
+@define-color accent_glow_dim #71391c;
+@define-color accent_icon #f6ad80;
+@define-color accent_icon_light #ed5b00;

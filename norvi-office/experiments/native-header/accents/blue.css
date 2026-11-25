@@ -1,0 +1,8 @@
+/* GNOME's blue accent (#3584e4); the other colours are derived from it. */
+@define-color accent_deep #3584e4;
+@define-color accent #86b5ef;
+@define-color accent_hover #4990e7;
+@define-color accent_glow #3376c9;
+@define-color accent_glow_dim #2b4873;
+@define-color accent_icon #9ac2f2;
+@define-color accent_icon_light #3584e4;

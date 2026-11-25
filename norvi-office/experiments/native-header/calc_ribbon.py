@@ -1,5 +1,6 @@
 """Generate the Excel-inspired ribbon in a disposable Calc preview profile."""
 from hashlib import sha256
+import importlib.util
 from pathlib import Path
 from io import BytesIO
 import os
@@ -7,10 +8,22 @@ import subprocess
 import xml.etree.ElementTree as ET
 from zipfile import ZIP_DEFLATED, ZipFile
 
+
+def _sibling(name):
+    """Load a module beside this file; callers load this one by path, not by package."""
+    spec = importlib.util.spec_from_file_location("norvi_" + name, Path(__file__).resolve().parent / f"{name}.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+accents = _sibling("accents")
+
 SOURCE = Path("/usr/lib/libreoffice/share/config/soffice.cfg/modules/scalc/ui/notebookbar.ui")
 SOURCE_HASH = "95663027bb4325d46522b19259fe47fc85b837b6f92558f6568942b58d535804"
 SYSTEM_ICONS = Path("/usr/share/libreoffice/share/config/images_sifr_dark_svg.zip")
 SHORTCUTS = "private:resource/toolbar/notebookbarshortcuts"
+INK = "#f2eff8"
 RIBBON = "user/config/soffice.cfg/modules/scalc/ui/notebookbar.ui"
 # Calc ribbons written by earlier candidates (2026-11-11 desktop runtime, the
 # dark and light output of the next source revision, then 1.1.0). A profile's
@@ -202,22 +215,28 @@ def localize_commands(config, app="calc"):
     return ET.tostring(tree, encoding="utf-8", xml_declaration=True)
 
 
-def preview_package(source, output, app="calc", icons_source=None, appearance="dark"):
-    """Build the disposable shared icon package with module-specific labels."""
+def preview_package(source, output, app="calc", icons_source=None, appearance="dark", accent=None):
+    """Build the disposable shared icon package with module-specific labels.
+
+    Icons drawn in the accent take the given desktop accent's colour.
+    """
     if appearance not in ("dark", "light"):
         raise ValueError("Icon appearance must be dark or light")
     style = "sifr_dark_svg" if appearance == "dark" else "sifr_svg"
     theme = f"iconsets/images_{style}.zip"
     # The release deliberately does not vendor Sifr. Derive the disposable
     # theme from the official installed package, retaining its license files.
-    more = "#f2eff8" if appearance == "dark" else "#2e3436"
+    more = INK if appearance == "dark" else "#2e3436"
+    palette = accents.colours(accent or accents.DEFAULT)
+    tint = palette["accent_icon"] if appearance == "dark" else palette["accent_icon_light"]
     with ZipFile(source) as base, ZipFile(icons_source or SYSTEM_ICONS) as icons:
         replacements = {}
         for prefix, size in (("sc_", 16), ("lc_", 24), ("32/", 32)):
             for name, (path, color) in ICONS.items():
-                if appearance == "light":
-                    # Sifr's official light ink and the existing Norvi accent.
-                    color = "#2e3436" if color == "#f2eff8" else "#7460d4"
+                if color != INK:
+                    color = tint
+                elif appearance == "light":
+                    color = "#2e3436"  # Sifr's official light ink.
                 replacements[f"cmd/{prefix}{name}.svg"] = (
                     f'<svg xmlns="http://www.w3.org/2000/svg" width="{size}" height="{size}" viewBox="0 0 24 24">'
                     f'<path d="{path}" fill="none" stroke="{color}" stroke-width="1.55" '
