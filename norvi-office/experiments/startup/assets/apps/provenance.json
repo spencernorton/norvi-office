@@ -11,9 +11,22 @@
       1024
     ],
     "prompt": "Flat vector app icon, modern minimalist geometric logo design. Built only from a few simple overlapping semi-transparent rounded shapes in flat solid colors; wherever two shapes overlap, the overlap area is a distinctly darker, more saturated blended color, like overlapping sheets of colored glass. Perfectly crisp edges and smooth rounded corners. The icon represents a text document: a tall rounded-rectangle page divided into flat horizontal color bands, pale cyan at the top, then sky blue, then azure, then deep royal blue at the bottom, with a second translucent rounded-rectangle page behind it offset to the upper right, and three short horizontal rounded bars of different lengths on the page like lines of text. Palette: pale cyan, sky blue, azure, royal blue, navy. No gradients, no shading, no 3D, no shadows, no outlines, no text, no letters. One single centered icon on a plain pure white background with wide empty margins.",
-    "processing": "Near-white background connected to the border made transparent with white removed from edge pixels; cropped and centred on a square canvas with a 3% margin; resized to 512 px; ancillary PNG metadata removed",
+    "processing": "Near-white background connected to the border made transparent with white removed from edge pixels; cropped and centred on a square canvas with a 3% margin; resized from the 1024 px master to 512 px and to each theme size from 16 to 256 px with Lanczos; ancillary PNG metadata removed",
     "original_sha256": "2ba52c9d6eb5214534aa947f91d9313caae41692019b967cf45d038c26465400",
-    "sha256": "330cda66a2df85194099cdd02f039e34cba7e7807c43bf3ef0a0ba0f6041bee3"
+    "sha256": "330cda66a2df85194099cdd02f039e34cba7e7807c43bf3ef0a0ba0f6041bee3",
+    "sizes": {
+      "16": "c0c32d1c75f12d8531b0e8c9bf53086c2ba5db7d0391b2dbc0216e04b913cdf0",
+      "22": "0f7018b1ac14fc12aa04dba5a6b53d0d2bba2d50cdc5e2c2f295b7c2243f35d7",
+      "24": "9025445913a90ebf92c49f51554138ffc6dc5db77f1996c636b75573235cb320",
+      "32": "f50e408d74fa8c716bab5c5430c73a222b36314fe1afcdfaeb717adb31b83ff1",
+      "48": "45291b586b870d8fe95ba27c88e64d8dcfc67e16a4a6a21375917db3fe863643",
+      "64": "ae512731919fa33f499e800c452cebec2ead91776c06c7cd28cd858a00550ae6",
+      "96": "d7ab00c84d68e1bdea32406103ff42b576f3d66d0c12cab71336f70a18efe22b",
+      "128": "e933bbc56702299f801b8cc084e7f6807f475df50f5f89b9ce1b5977b857784a",
+      "192": "437c288758dbdb7cbe066320efca7a316b75d61e6b0893d3ddb06faea80932e9",
+      "256": "de15d875bb5260934960fd8cbe70a3c0d4b4261c9a5d7d6a98acdaa962c45d43",
+      "512": "330cda66a2df85194099cdd02f039e34cba7e7807c43bf3ef0a0ba0f6041bee3"
+    }
   },
   "calc": {
     "generator": "GE image generation API",
@@ -27,9 +40,22 @@
       1024
     ],
     "prompt": "Flat vector app icon, modern minimalist geometric logo design. Built only from a few simple overlapping semi-transparent rounded shapes in flat solid colors; wherever two shapes overlap, the overlap area is a distinctly darker, more saturated blended color, like overlapping sheets of colored glass. Perfectly crisp edges and smooth rounded corners. The icon represents a spreadsheet: a rounded square divided into a simple 3 by 3 grid of square cells in different flat greens, with one translucent horizontal row band and one translucent vertical column band crossing each other, and the single cell where the row and column intersect is the darkest green. Palette: bright lime, light green, emerald green, teal, dark forest green. No gradients, no shading, no 3D, no shadows, no outlines, no text, no letters, no numbers. One single centered icon on a plain pure white background with wide empty margins.",
-    "processing": "Near-white background connected to the border made transparent with white removed from edge pixels; cropped and centred on a square canvas with a 3% margin; resized to 512 px; ancillary PNG metadata removed",
+    "processing": "Near-white background connected to the border made transparent with white removed from edge pixels; cropped and centred on a square canvas with a 3% margin; resized from the 1024 px master to 512 px and to each theme size from 16 to 256 px with Lanczos; ancillary PNG metadata removed",
     "original_sha256": "64e3730a79beef31a2432087689d264fd55cdff0212405fbf21f5491f2e27ee9",
-    "sha256": "0619ff4305fbc6cfc39bbbe6d5b0cd163412c867b8d7eed9f1dc76d7ff78852e"
+    "sha256": "0619ff4305fbc6cfc39bbbe6d5b0cd163412c867b8d7eed9f1dc76d7ff78852e",
+    "sizes": {
+      "16": "88d2e53c963c320f751fa21a21ffcfebbec51ca11f1a8373cc9f52beafc30b95",
+      "22": "d41c61f511c686f191a87fdb1a9ffacb8fd4032d6a2bc2722d4793a7415d217f",
+      "24": "335a1f3c7c65741c9bd81955d0818fc08a8fb37305416c4c83d7f2b4a7ca94f2",
+      "32": "23b9884bd6d369201a3a479ff9dc906f91687871b5b2ba9a4ef08ac27ec5ddcf",
+      "48": "3e5821af92716437d4717a9be2d1d9a182aaaae1890db0615f5ef8e667c607e9",
+      "64": "c2df03827e3f89547ebc04b19c8586469bb4c90b59be699ea0c3009f3bf783c5",
+      "96": "f77aea230227ffec423e2d47d0fea56ac0c319d36957d8c32892fdd2273dd816",
+      "128": "74da51b223865dde450b272e3bac6e27f70ef49c7f8fddf5e49e22096eedd544",
+      "192": "438b48d7d433f1fcfd873266354fd30385810ef7b29a83bb5fd7c9ef51451164",
+      "256": "56d58c3489009b06af61c4cc1536104987b1e13dce75bf52e2c5c26485b4e4c3",
+      "512": "0619ff4305fbc6cfc39bbbe6d5b0cd163412c867b8d7eed9f1dc76d7ff78852e"
+    }
   },
   "impress": {
     "generator": "Codex image generation tool",
@@ -39,9 +65,22 @@
     ],
     "reference": "A preview of this set's Writer, Calc and an earlier Impress candidate, used for design language",
     "prompt": "Design one original flat Linux launcher icon for Norvi Office Impress, a presentation and slideshow app. Use the attached blue Writer, green Calc and orange Impress set as the reference for crisp generous curves and solid translucent-looking color intersections. Refine the orange concept into a compact nearly square silhouette with the same optical size as Calc: a distinct orange rounded slide card rising slightly at its upper left behind a large coral-red pie chart toward the lower right. The pie is a bold continuous disc with one bright tangerine quarter; the orange card peeks out around the top and left, still clearly visible. Keep the overlap in a richer orange-red. Geometric and very simple, three or four large color regions, no outlines, text, legs, frames, other icons, gloss, lighting, or drop shadow. No existing brand logos. One centered artwork on a genuinely transparent square canvas, generous blank margin, legible at 24 pixels.",
-    "processing": "Alpha kept to the connected artwork; fitted to 942 px centred on a 1024 px canvas; resized to 512 px; ancillary PNG metadata removed",
+    "processing": "Alpha kept to the connected artwork; fitted to 942 px centred on a 1024 px canvas; resized from the 1024 px master to 512 px and to each theme size from 16 to 256 px with Lanczos; ancillary PNG metadata removed",
     "original_sha256": "1e646b87628ec46dfac43247be9f2390ffa37e3ece334d2518e761b4dd066be6",
-    "sha256": "9e7ae17774800efb7ab41d2bdd62be6eacc93896f483498181ec31154deb5943"
+    "sha256": "9e7ae17774800efb7ab41d2bdd62be6eacc93896f483498181ec31154deb5943",
+    "sizes": {
+      "16": "f9c2a54ecf7a0a13040bea5df66b37acf7ed1cb678dd774f06825bae227fd362",
+      "22": "1eb985f1c85a282fe017d011fecfbb676801a417a3797a560ba0fabd4725382f",
+      "24": "77d6c2bfce3b38428fbec776202891da8caf60a13049f6aba54ec86e8fc9e7bd",
+      "32": "5b3d4ca5518fea7d6175672057b48564a34566f2326ad10dbf0c8e46e34442e1",
+      "48": "9dcae39eacf43be39016648d8977040c1005fe40c72658ad36091b717a1498f7",
+      "64": "2866fe784dcd908ae21ef58bddfe50d6e08388efc3d2f54521ee505a888532d7",
+      "96": "babb380edff090c2b93af12c3dac8e0994d596ddb7162072ba9718ecff859c23",
+      "128": "db28a241395dbb913e9006dc8cd7bc70fe142f97a3271f6d484994d45e781a8f",
+      "192": "6560cca7c2bf2b6a0f1ade1301cd0a37031c419bc11b0c8ff6e20ecb1dac7c80",
+      "256": "bc32798ac3f06074bce88fa22f5bffdf5be4c39cd8dc23c445502b08f720c56e",
+      "512": "9e7ae17774800efb7ab41d2bdd62be6eacc93896f483498181ec31154deb5943"
+    }
   },
   "draw": {
     "generator": "Codex image generation tool",
@@ -51,9 +90,22 @@
     ],
     "reference": "A preview of this set's Writer, Calc and an earlier Impress candidate, used for design language",
     "prompt": "Create exactly ONE original Norvi Office Linux launcher app icon as a 1024 square transparent PNG. Use the attached set solely for its design language: bold continuous flat geometric shapes, large rounded corners, rich layered color intersections, no outline, very slight tonal changes at most. Make its optical size align with the reference Calc icon and fill about 80% of the canvas. One compact connected silhouette, legible at 24 pixels. Genuinely transparent empty space around the isolated icon, no colored backdrop, no text labels, no frame, no extra icons, no shadows, no 3D, no gloss. Do not copy any existing branded logo. For vector editor Draw: a composition of three simple overlapping geometric shapes, a rounded yellow square behind, a large warm saffron circle toward upper right, and a rounded honey-gold triangular wedge in the lower left. Nearly square compact silhouette, large smooth corners, connected forms, deep amber overlap regions and golden-yellow highlights; avoid orange-red so it's clearly distinct from the orange/coral Impress icon. No pens, gradients, or small details.",
-    "processing": "Alpha kept to the connected artwork; fitted to 942 px centred on a 1024 px canvas; resized to 512 px; ancillary PNG metadata removed",
+    "processing": "Alpha kept to the connected artwork; fitted to 942 px centred on a 1024 px canvas; resized from the 1024 px master to 512 px and to each theme size from 16 to 256 px with Lanczos; ancillary PNG metadata removed",
     "original_sha256": "537f4c2eb27567e94044c998aeb533d6af06d7e9e3cb382e55f9dfe6fbbeb224",
-    "sha256": "e333e09b75bcb8918c7cc76ab0d0ac75eeeac2c5e6a18382f2512905003aa052"
+    "sha256": "e333e09b75bcb8918c7cc76ab0d0ac75eeeac2c5e6a18382f2512905003aa052",
+    "sizes": {
+      "16": "a20f71bd23b6cfb6bba97dd0ebbbde8bf3aef8c16e144f2022b844c96980af12",
+      "22": "ed5003d20269796c83eca82d654ea97b980d5afae8bac10e8664a9290b712f05",
+      "24": "a69e5469e0a31efd8f7965d6c3510e89b0c872f13e7b332a0d633e92f3ba3f46",
+      "32": "e670c3b011a82b5830d8ed2b055f9f4f162ca5e01006838bb87a4f5d1108bbeb",
+      "48": "b89ae2b386ffabca139309d7dec10b9fca2c4b95cc1411198892f2dff87e83fa",
+      "64": "0dd93392c5327e773c66592c33172d07daf6e85c39a835d8fd1162fe454751a1",
+      "96": "20721292e2b995ce77c06c6209f9965b1c1eedd3bb2aa489ea4e7a2da5d55480",
+      "128": "459088d60308b7b71527fd6fd6655a3c6bbfea77272ad6d059f2176da9695cd2",
+      "192": "e2ecfa972ee9d7f8d27eb8eeedcbbdb7936cdeae99d14059cb70a17f5461f7bf",
+      "256": "99eedfa0dfdcabd8e8c48da884b6f46e62692f66564621e062e82b175610c2c1",
+      "512": "e333e09b75bcb8918c7cc76ab0d0ac75eeeac2c5e6a18382f2512905003aa052"
+    }
   },
   "math": {
     "generator": "Codex image generation tool",
@@ -63,9 +115,22 @@
     ],
     "reference": "A preview of this set's Writer, Calc and an earlier Impress candidate, used for design language",
     "prompt": "Create exactly ONE original Norvi Office Linux launcher app icon as a 1024 square transparent PNG. Use the attached set solely for its design language: bold continuous flat geometric shapes, large rounded corners, rich layered color intersections, no outline, very slight tonal changes at most. Make its optical size align with the reference Calc icon and fill about 80% of the canvas. One compact connected silhouette, legible at 24 pixels. Genuinely transparent empty space around the isolated icon, no colored backdrop, no text labels, no frame, no extra icons, no shadows, no 3D, no gloss. Do not copy any existing branded logo. For the formula editor Math: a bold, instantly recognizable radical (square-root sign) made of one wide continuous lavender folded-looking ribbon with a purple intersection, laid over a deeper violet rounded tile offset a little to the lower right. The radical's long top bar is unbroken and its right end is blunt; the check-like bottom bend is clearly visible. Three coordinated solid purples, no other letters or symbols. Friendly broad corner radii.",
-    "processing": "Alpha kept to the connected artwork; fitted to 942 px centred on a 1024 px canvas; resized to 512 px; ancillary PNG metadata removed",
+    "processing": "Alpha kept to the connected artwork; fitted to 942 px centred on a 1024 px canvas; resized from the 1024 px master to 512 px and to each theme size from 16 to 256 px with Lanczos; ancillary PNG metadata removed",
     "original_sha256": "538172f383ba573ca1b53ce1a6bf748c6799878d7866ae2be54ff1c3f67d6d0d",
-    "sha256": "393d41abca30ee045da0b15413b019333c1a53867ce26868ae7ac12764c641ba"
+    "sha256": "393d41abca30ee045da0b15413b019333c1a53867ce26868ae7ac12764c641ba",
+    "sizes": {
+      "16": "b7585ab5a569858a49f139ab484ff5a056dd1101b34d5a02be5f2e8eade62183",
+      "22": "99cf3c7cb1e3bf4cdbaed3705e9a5d845c883f3273ef51056c8f41bdb22fa86e",
+      "24": "2c3f6c2641ca6de2ccd8e287792006467ed104762572bc7fac4c06d7e60269b4",
+      "32": "7400e7bbdece36d78bbc1d249a9fb2cc791584d94b69d614cbc5626c654a5630",
+      "48": "561585d536d60d6354d75c8c491590967938ca4d9fce69e4ebccaaee2a24ce1c",
+      "64": "b481bc49f9966b0617b3549edee34252c6c1eda88e316e8a2eae3c86a48d975e",
+      "96": "196d093ea4dd4577a4228a4b226a635d594003de2ea8b77a8f4ff75bbef7f080",
+      "128": "428ab444e207538af56eb55fe7ad405209a3609894d96b49318fd6fd70ae2124",
+      "192": "1e944230a3f6cadea4f1a3e7b96ea7a649e7ffec8d4f3da21e68b7ac80a2f02a",
+      "256": "441fc8a99b60c07a1d021db8e5e872a854822047b82bf2e8a407ce5b2415f4e6",
+      "512": "393d41abca30ee045da0b15413b019333c1a53867ce26868ae7ac12764c641ba"
+    }
   },
   "base": {
     "generator": "GE image generation API",
@@ -79,8 +144,21 @@
       1024
     ],
     "prompt": "Flat vector app icon, modern minimalist geometric logo design. Built only from a few simple overlapping semi-transparent rounded shapes in flat solid colors; wherever two shapes overlap, the overlap area is a distinctly darker, more saturated blended color, like overlapping sheets of colored glass. Perfectly crisp edges and smooth rounded corners. The icon represents a database: three wide flat rounded discs stacked vertically like a database cylinder, each disc a slightly different flat shade, with a translucent rounded-rectangle table card overlapping the lower right of the stack; the area where the card and the discs overlap is a deep darker rose. Palette: light pink, rose pink, magenta, deep raspberry, dark crimson purple. Bold and simple, very few details. No gradients, no shading, no 3D, no shadows, no outlines, no text, no letters, no numbers. One single centered icon on a plain pure white background with wide empty margins.",
-    "processing": "Near-white background connected to the border made transparent with white removed from edge pixels; cropped and centred on a square canvas with a 3% margin; resized to 512 px; ancillary PNG metadata removed",
+    "processing": "Near-white background connected to the border made transparent with white removed from edge pixels; cropped and centred on a square canvas with a 3% margin; resized from the 1024 px master to 512 px and to each theme size from 16 to 256 px with Lanczos; ancillary PNG metadata removed",
     "original_sha256": "1491009784d519ee34b4a09504bee209bcfa0b7475d6027d4214523e46879ed0",
-    "sha256": "f2de81f9c5882d53c3b54835737ffb098a8a99bbf4c710ee47ca052d26208d69"
+    "sha256": "f2de81f9c5882d53c3b54835737ffb098a8a99bbf4c710ee47ca052d26208d69",
+    "sizes": {
+      "16": "52f995bd5a6632ce1d329460da479e54a92909399ab7378376ef44f926f9824b",
+      "22": "a89f8cb6bac2019e875ac36db20a6cb6585d4a4db286e2117c8b0558fe91173a",
+      "24": "d50d73594f5945d3c91f55b185ba253976473eb9fe1d1116b7fc8b4bcef7b0a5",
+      "32": "b2ff615f66558a6b36adb1c018aee591b6d59812fdcf15c88ca22b4684055d40",
+      "48": "ba8e6974d2fdd2aeec4c86faf189a03fbc1c80271826dee50eb568af3afba15f",
+      "64": "90a785b30939aa3d6464802462241e8e3fe843937427216c0d68d2a0bf46d1ef",
+      "96": "fbb4a027ca1cb0a459903d1344f2597776e23784dae45de0cc14af1222ee0487",
+      "128": "e8e0aac61477b23631e826c9339d7a74f2803833fe98bc75948b9b66610eccc8",
+      "192": "60f457a216a9b6e7267a83c138be3d4201dad4b5ca7dfaa08f964fb28b41f9bd",
+      "256": "4f8b046c439d3f8a991cc9a6233f0d59777f2c4fae76aaca231521b9e6d62790",
+      "512": "f2de81f9c5882d53c3b54835737ffb098a8a99bbf4c710ee47ca052d26208d69"
+    }
   }
 }

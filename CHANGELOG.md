@@ -1,5 +1,16 @@
 # Changelog
 
+## 1.4.4 — Sharp application icons at every size
+
+- The application icons looked soft in the dock and menus. Each launcher named
+  one 512 px file, which the shell shrank on every draw with a fast filter.
+  Every icon now ships pre-rendered at each theme size from 16 to 512 px, and
+  the launchers name the themed icon, so the dock draws the 64 px image as it
+  is: measured about 1.3 to 2.5 times sharper.
+- The direct desktop integration installs the sizes in the user's icon theme,
+  refreshes an existing icon cache, and removes them on uninstall. The package
+  installs them system-wide. A module without every size keeps its file.
+
 ## 1.4.3 — Base's section bars follow the accent
 
 - Base's Database, Tasks and Forms bars were the design study's violet-grey in

@@ -20,5 +20,11 @@ dpkg-deb -x "${package[0]}" "$payload"
 # Root code and preexisting LibreOffice files are never part of this package.
 test ! -e "$payload/usr/lib/libreoffice"
 test ! -e "$payload/etc"
+# Every application icon ships at every theme size, so launchers can name it.
+for app in writer calc impress draw base math; do
+    for size in 16 22 24 32 48 64 96 128 192 256 512; do
+        test -s "$payload/usr/share/icons/hicolor/${size}x${size}/apps/norvi-office-$app.png"
+    done
+done
 cd /tmp
 xvfb-run -a dbus-run-session -- /usr/bin/python3 "$root/scripts/smoke_installed.py" "$payload" "$root/norvi-office/experiments/native-header/fixtures.py"

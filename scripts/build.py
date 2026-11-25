@@ -91,6 +91,14 @@ def build(output):
         icons = stage / "usr/share/icons/hicolor/256x256/apps"
         icons.mkdir(parents=True)
         shutil.copy2(ROOT / "packaging/office-256.png", icons / "norvi-office.png")
+        # Each application's icon at every theme size, so launchers can name it.
+        apps = ROOT / "norvi-office/experiments/startup/assets/apps"
+        for app in ("writer", "calc", "impress", "draw", "base", "math"):
+            for size in (16, 22, 24, 32, 48, 64, 96, 128, 192, 256, 512):
+                folder = stage / f"usr/share/icons/hicolor/{size}x{size}/apps"
+                folder.mkdir(parents=True, exist_ok=True)
+                shutil.copy2(apps / (f"{app}.png" if size == 512 else f"hicolor/{size}x{size}/apps/norvi-office-{app}.png"),
+                             folder / f"norvi-office-{app}.png")
         docs = stage / "usr/share/doc/norvi-office"
         docs.mkdir(parents=True)
         shutil.copy2(ROOT / "LICENSE", docs / "copyright")

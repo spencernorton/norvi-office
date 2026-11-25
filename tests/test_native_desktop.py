@@ -164,6 +164,11 @@ class NativeDesktopTests(unittest.TestCase):
                         ("usr/share/norvi-office/startup/assets/office.png", "suite icon"),
                         ("usr/share/norvi-office/startup/assets/apps/calc.png", "calc icon"),
                         ("usr/share/norvi-office/startup/assets/apps/writer.png", "writer icon"),
+                        # Calc has every theme size; Writer lacks one, so it keeps its file.
+                        *((f"usr/share/norvi-office/startup/assets/apps/hicolor/{size}x{size}/apps/norvi-office-calc.png",
+                           f"calc {size}") for size in installer.THEME_SIZES if size != 512),
+                        *((f"usr/share/norvi-office/startup/assets/apps/hicolor/{size}x{size}/apps/norvi-office-writer.png",
+                           f"writer {size}") for size in installer.THEME_SIZES if size not in (512, 22)),
                     ):
                         path = root / relative
                         path.parent.mkdir(parents=True, exist_ok=True)
@@ -173,7 +178,9 @@ class NativeDesktopTests(unittest.TestCase):
                     changed = desktop / "Office Preview - calc.desktop"
                     changed.write_bytes(b"user edit during installation")
                     preview_before[changed] = changed.read_bytes()
-                if args[0] in ("gio", "gnome-extensions", "libreoffice", "update-desktop-database") or (args[0] == "desktop-file-validate" and not shutil.which(args[0])):
+                if args[0] == "gtk-update-icon-cache":
+                    icon_refreshes.append(args[-1])
+                if args[0] in ("gio", "gnome-extensions", "libreoffice", "update-desktop-database", "gtk-update-icon-cache") or (args[0] == "desktop-file-validate" and not shutil.which(args[0])):
                     return subprocess.CompletedProcess(args, 0)
                 return run(args, **kwargs)
 
@@ -181,6 +188,10 @@ class NativeDesktopTests(unittest.TestCase):
                 return str(desktop) + "\n" if args[0] == "xdg-user-dir" else output(args, **kwargs)
 
             activation_calls = []
+            icon_refreshes = []
+            theme = data / "icons/hicolor"
+            theme.mkdir(parents=True)
+            (theme / "icon-theme.cache").write_bytes(b"existing user icon cache")
 
             def activation(add):
                 activation_calls.append(add)
@@ -201,9 +212,15 @@ class NativeDesktopTests(unittest.TestCase):
                     self.assertIn("Name=Office Calc", installed)
                     self.assertIn("--desktop --app calc %U", installed)
                     assets = data / "norvi-office/desktop-runtime" / installer.sha(candidate)[:16] / "usr/share/norvi-office/startup/assets"
-                    self.assertIn(f"Icon={assets / 'apps/calc.png'}\n", installed)
+                    # Every theme size is installed, so the launcher names the themed icon.
+                    self.assertIn("Icon=norvi-office-calc\n", installed)
+                    for size in installer.THEME_SIZES:
+                        icon = theme / f"{size}x{size}/apps/norvi-office-calc.png"
+                        self.assertEqual(icon.read_text(), "calc icon" if size == 512 else f"calc {size}")
+                    self.assertEqual(icon_refreshes, [str(theme)])
+                    # A module missing a size keeps its file, and one without an icon keeps the suite icon.
                     self.assertIn(f"Icon={assets / 'apps/writer.png'}\n", (target.parent / "libreoffice-writer.desktop").read_text())
-                    # A module without its own icon keeps the suite icon.
+                    self.assertFalse(list(theme.rglob("norvi-office-writer.png")))
                     self.assertIn(f"Icon={assets / 'office.png'}\n", (target.parent / "libreoffice-base.desktop").read_text())
                     self.assertEqual({path.name for path in desktop.glob("Office*.desktop") if "Preview" not in path.name},
                                      {"Office.desktop", "Office Calc.desktop", "Office Writer.desktop", "Office Impress.desktop",
@@ -227,6 +244,8 @@ class NativeDesktopTests(unittest.TestCase):
                     self.assertTrue(state.exists())
                     target.write_text(installed)
                     installer.uninstall()
+                    self.assertFalse(list(theme.rglob("norvi-office-*.png")), "Uninstall removes the themed icons")
+                    self.assertEqual(icon_refreshes, [str(theme), str(theme)])
                     # Re-enrollment can reuse an unchanged retained runtime.
                     installer.install(candidate, desktop_shortcuts)
                     installer.uninstall()
